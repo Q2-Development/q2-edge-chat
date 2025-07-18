@@ -1,11 +1,3 @@
-//
-//  FrontPageView.swift
-//  Q2 Edge Chat
-//
-//  Created by Michael Gathara on 7/18/25.
-//
-
-
 import SwiftUI
 
 struct FrontPageView: View {
