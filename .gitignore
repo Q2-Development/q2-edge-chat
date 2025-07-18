@@ -1,0 +1,98 @@
+# Xcode
+#
+build/
+DerivedData/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+*.xcscmblueprint
+
+# SwiftPM
+#
+.build/
+Packages/
+Package.pins
+Package.resolved
+.swiftpm/xcode/package.xcworkspace/xcshareddata/swiftpm/Package.resolved
+
+# CocoaPods
+#
+Pods/
+Podfile.lock
+
+# Carthage
+#
+Carthage/Build/
+
+# Fastlane
+#
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# Archives
+#
+*.xcarchive
+
+# Xcode Server
+#
+integration_logs/
+
+# App data
+#
+*.moved-aside
+*.xcuserstate
+
+# Playgrounds
+#
+timeline.xctimeline
+playground.xcworkspace
+
+# Swift Package Manager
+#
+.swiftpm
+
+# User-specific files
+#
+*.swp
+*.swo
+
+# IDEs and editors
+#
+.idea/
+*.iml
+*.hmap
+
+# macOS
+#
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails
+#
+._*
+
+# Files that might appear in the root of a volume
+#
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+
+# Directories potentially created on remote AFP share
+#
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
