@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		139FBB6D2E2A24F2003EF52B /* LlamaFramework in Frameworks */ = {isa = PBXBuildFile; productRef = 139FBB6C2E2A24F2003EF52B /* LlamaFramework */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		139FBB492E2A1D37003EF52B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -29,6 +33,16 @@
 		139FBB522E2A1D37003EF52B /* Q2 Edge ChatUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Q2 Edge ChatUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		139FBB752E2A25EA003EF52B /* Exceptions for "LlamaPackage" folder in "Q2 Edge Chat" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Package.swift,
+			);
+			target = 139FBB3A2E2A1D35003EF52B /* Q2 Edge Chat */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		139FBB3D2E2A1D35003EF52B /* Q2 Edge Chat */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
@@ -45,6 +59,14 @@
 			path = "Q2 Edge ChatUITests";
 			sourceTree = "<group>";
 		};
+		139FBB672E2A2281003EF52B /* LlamaPackage */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				139FBB752E2A25EA003EF52B /* Exceptions for "LlamaPackage" folder in "Q2 Edge Chat" target */,
+			);
+			path = LlamaPackage;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -52,6 +74,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				139FBB6D2E2A24F2003EF52B /* LlamaFramework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -75,6 +98,7 @@
 		139FBB322E2A1D35003EF52B = {
 			isa = PBXGroup;
 			children = (
+				139FBB672E2A2281003EF52B /* LlamaPackage */,
 				139FBB3D2E2A1D35003EF52B /* Q2 Edge Chat */,
 				139FBB4B2E2A1D37003EF52B /* Q2 Edge ChatTests */,
 				139FBB552E2A1D37003EF52B /* Q2 Edge ChatUITests */,
@@ -109,9 +133,11 @@
 			);
 			fileSystemSynchronizedGroups = (
 				139FBB3D2E2A1D35003EF52B /* Q2 Edge Chat */,
+				139FBB672E2A2281003EF52B /* LlamaPackage */,
 			);
 			name = "Q2 Edge Chat";
 			packageProductDependencies = (
+				139FBB6C2E2A24F2003EF52B /* LlamaFramework */,
 			);
 			productName = "Q2 Edge Chat";
 			productReference = 139FBB3B2E2A1D35003EF52B /* Q2 Edge Chat.app */;
@@ -195,6 +221,9 @@
 			);
 			mainGroup = 139FBB322E2A1D35003EF52B;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				139FBB6B2E2A24F2003EF52B /* XCLocalSwiftPackageReference "LlamaPackage" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 139FBB3C2E2A1D35003EF52B /* Products */;
 			projectDirPath = "";
@@ -550,6 +579,20 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		139FBB6B2E2A24F2003EF52B /* XCLocalSwiftPackageReference "LlamaPackage" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = LlamaPackage;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		139FBB6C2E2A24F2003EF52B /* LlamaFramework */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LlamaFramework;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 139FBB332E2A1D35003EF52B /* Project object */;
 }
