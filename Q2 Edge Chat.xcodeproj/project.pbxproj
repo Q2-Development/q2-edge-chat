@@ -11,6 +11,8 @@
 		13B882522E2B7716006A0005 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B8824E2E2B7716006A0005 /* Assets.xcassets */; };
 		13B882542E2B7716006A0005 /* Q2_Edge_ChatApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B882502E2B7716006A0005 /* Q2_Edge_ChatApp.swift */; };
 		13B882552E2B7716006A0005 /* FrontPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B8824C2E2B7716006A0005 /* FrontPageView.swift */; };
+		13B882582E2C31D8006A0005 /* ModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B882572E2C31D3006A0005 /* ModelManager.swift */; };
+		13B8825A2E2C389C006A0005 /* ModelManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B882592E2C3899006A0005 /* ModelManifest.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -37,6 +39,8 @@
 		13B8824C2E2B7716006A0005 /* FrontPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrontPageView.swift; sourceTree = "<group>"; };
 		13B8824E2E2B7716006A0005 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		13B882502E2B7716006A0005 /* Q2_Edge_ChatApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Q2_Edge_ChatApp.swift; sourceTree = "<group>"; };
+		13B882572E2C31D3006A0005 /* ModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManager.swift; sourceTree = "<group>"; };
+		13B882592E2C3899006A0005 /* ModelManifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManifest.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -128,11 +132,21 @@
 		13B882512E2B7716006A0005 /* Q2 Edge Chat */ = {
 			isa = PBXGroup;
 			children = (
+				13B882562E2C31C2006A0005 /* Services */,
 				13B8824D2E2B7716006A0005 /* Views */,
 				13B8824E2E2B7716006A0005 /* Assets.xcassets */,
 				13B882502E2B7716006A0005 /* Q2_Edge_ChatApp.swift */,
 			);
 			path = "Q2 Edge Chat";
+			sourceTree = "<group>";
+		};
+		13B882562E2C31C2006A0005 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				13B882592E2C3899006A0005 /* ModelManifest.swift */,
+				13B882572E2C31D3006A0005 /* ModelManager.swift */,
+			);
+			path = Services;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -286,6 +300,8 @@
 			files = (
 				13B882542E2B7716006A0005 /* Q2_Edge_ChatApp.swift in Sources */,
 				13B882552E2B7716006A0005 /* FrontPageView.swift in Sources */,
+				13B8825A2E2C389C006A0005 /* ModelManifest.swift in Sources */,
+				13B882582E2C31D8006A0005 /* ModelManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
