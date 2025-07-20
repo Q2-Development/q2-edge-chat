@@ -1,10 +1,3 @@
-//
-//  ModelManifest.swift
-//  Q2 Edge Chat
-//
-//  Created by Michael Gathara on 7/19/25.
-//
-
 import Foundation
 
 struct ManifestEntry: Codable, Identifiable {
@@ -19,7 +12,12 @@ actor ManifestStore {
 
     init() throws {
         let fm = FileManager.default
-        let support = try fm.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        let support = try fm.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
         fileURL = support.appendingPathComponent("models.json")
         if fm.fileExists(atPath: fileURL.path) {
             let data = try Data(contentsOf: fileURL)
@@ -43,4 +41,3 @@ actor ManifestStore {
         try data.write(to: fileURL, options: .atomic)
     }
 }
-
