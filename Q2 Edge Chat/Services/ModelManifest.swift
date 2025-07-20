@@ -4,6 +4,18 @@ struct ManifestEntry: Codable, Identifiable {
     let id: String
     let localURL: URL
     let downloadedAt: Date
+    
+    func url() throws -> URL {
+        let fm = FileManager.default
+        let library = try fm.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+        let modelPath = library.appendingPathComponent(localURL.path())
+        return modelPath
+    }
 }
 
 actor ManifestStore {
@@ -19,7 +31,7 @@ actor ManifestStore {
             create: true
         )
         fileURL = support.appendingPathComponent("models.json")
-        if fm.fileExists(atPath: fileURL.path) {
+        if fm.fileExists(atPath: fileURL.path()) {
             let data = try Data(contentsOf: fileURL)
             entries = try JSONDecoder().decode([ManifestEntry].self, from: data)
         }

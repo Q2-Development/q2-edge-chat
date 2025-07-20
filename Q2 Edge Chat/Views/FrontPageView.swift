@@ -1,10 +1,10 @@
 import SwiftUI
-
+import LLamaSwift
 struct FrontPageView: View {
     @State private var message = ""
     @State private var isDownloading = false
 
-    private let quickChatModelID = "mradermacher/OpenELM-1_1B-Instruct-GGUF"
+    private let quickChatModelID = "bartowski/Llama-3.2-1B-Instruct-GGUF"
 
     var body: some View {
         VStack(spacing: 20) {
@@ -86,10 +86,14 @@ struct FrontPageView: View {
         message = ""
         do {
             let store = try ManifestStore()
+           
+
+
             
             if await store.all().contains(where: { $0.id == quickChatModelID }) {
                 message = "\(quickChatModelID) is already available."
                 isDownloading = false
+
                 return
             }
 

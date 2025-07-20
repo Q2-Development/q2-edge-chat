@@ -1,4 +1,5 @@
 import Foundation
+import LLamaSwift
 
 struct HFSibling: Codable {
     let rfilename: String
@@ -22,6 +23,17 @@ actor ModelManager {
         return try JSONDecoder().decode(HFModel.self, from: data)
     }
 
+    func buildLocalModelURL(modelID: String, filename: String) -> URL {
+        let sanitizedModelID = modelID.replacingOccurrences(of: "/", with: "_")
+        
+        let filePath = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("Models", isDirectory: true)
+            .appendingPathComponent(sanitizedModelID, isDirectory: true)
+            .appendingPathComponent(filename)
+        
+        return filePath
+    }
+    
     func downloadModelFile(from fileURL: URL, modelID: String, filename: String) async throws -> URL {
         
         let (tempURL, _) = try await URLSession.shared.download(from: fileURL, delegate: nil)
@@ -51,6 +63,8 @@ actor ModelManager {
         
         try fm.moveItem(at: tempURL, to: destURL)
         
-        return destURL
+
+        // Returning URL from the root of the custom directories to avoid file error related to sandboxing
+        return URL(filePath: "Models")!.appendingPathComponent(sanitizedModelID, isDirectory: true).appendingPathComponent(filename)
     }
 }
