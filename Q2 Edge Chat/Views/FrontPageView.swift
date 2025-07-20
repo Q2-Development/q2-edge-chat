@@ -77,8 +77,9 @@ struct FrontPageView: View {
             }
         }
         .background(Color(.systemBackground))
-        .ignoresSafeArea()
+//        .ignoresSafeArea()
     }
+
 
     private func handleQuickChat() async {
         isDownloading = true

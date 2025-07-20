@@ -13,6 +13,10 @@
 		13B882552E2B7716006A0005 /* FrontPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B8824C2E2B7716006A0005 /* FrontPageView.swift */; };
 		13B882582E2C31D8006A0005 /* ModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B882572E2C31D3006A0005 /* ModelManager.swift */; };
 		13B8825A2E2C389C006A0005 /* ModelManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B882592E2C3899006A0005 /* ModelManifest.swift */; };
+		21E506542E2D1DE200D26F61 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21E506532E2D1DE200D26F61 /* ContentView.swift */; };
+		21E506582E2D1FD200D26F61 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21E506572E2D1FD200D26F61 /* ChatView.swift */; };
+		21E5065C2E2D4E3F00D26F61 /* DynamicTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21E5065B2E2D4E3F00D26F61 /* DynamicTextEditor.swift */; };
+		21E506612E2D651D00D26F61 /* MessagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21E506602E2D651D00D26F61 /* MessagesView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -41,6 +45,10 @@
 		13B882502E2B7716006A0005 /* Q2_Edge_ChatApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Q2_Edge_ChatApp.swift; sourceTree = "<group>"; };
 		13B882572E2C31D3006A0005 /* ModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManager.swift; sourceTree = "<group>"; };
 		13B882592E2C3899006A0005 /* ModelManifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManifest.swift; sourceTree = "<group>"; };
+		21E506532E2D1DE200D26F61 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		21E506572E2D1FD200D26F61 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		21E5065B2E2D4E3F00D26F61 /* DynamicTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicTextEditor.swift; sourceTree = "<group>"; };
+		21E506602E2D651D00D26F61 /* MessagesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagesView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -70,6 +78,11 @@
 				139FBB752E2A25EA003EF52B /* Exceptions for "LlamaPackage" folder in "Q2 Edge Chat" target */,
 			);
 			path = LlamaPackage;
+			sourceTree = "<group>";
+		};
+		21E5065D2E2D500800D26F61 /* Models */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Models;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -124,7 +137,11 @@
 		13B8824D2E2B7716006A0005 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				21E506602E2D651D00D26F61 /* MessagesView.swift */,
+				21E506572E2D1FD200D26F61 /* ChatView.swift */,
+				21E506532E2D1DE200D26F61 /* ContentView.swift */,
 				13B8824C2E2B7716006A0005 /* FrontPageView.swift */,
+				21E5065B2E2D4E3F00D26F61 /* DynamicTextEditor.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -132,6 +149,7 @@
 		13B882512E2B7716006A0005 /* Q2 Edge Chat */ = {
 			isa = PBXGroup;
 			children = (
+				21E5065D2E2D500800D26F61 /* Models */,
 				13B882562E2C31C2006A0005 /* Services */,
 				13B8824D2E2B7716006A0005 /* Views */,
 				13B8824E2E2B7716006A0005 /* Assets.xcassets */,
@@ -166,6 +184,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				139FBB672E2A2281003EF52B /* LlamaPackage */,
+				21E5065D2E2D500800D26F61 /* Models */,
 			);
 			name = "Q2 Edge Chat";
 			packageProductDependencies = (
@@ -298,7 +317,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				21E5065C2E2D4E3F00D26F61 /* DynamicTextEditor.swift in Sources */,
+				21E506582E2D1FD200D26F61 /* ChatView.swift in Sources */,
+				21E506612E2D651D00D26F61 /* MessagesView.swift in Sources */,
 				13B882542E2B7716006A0005 /* Q2_Edge_ChatApp.swift in Sources */,
+				21E506542E2D1DE200D26F61 /* ContentView.swift in Sources */,
 				13B882552E2B7716006A0005 /* FrontPageView.swift in Sources */,
 				13B8825A2E2C389C006A0005 /* ModelManifest.swift in Sources */,
 				13B882582E2C31D8006A0005 /* ModelManager.swift in Sources */,
@@ -461,6 +484,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ZV4QQQ56Z3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -468,6 +492,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -488,6 +513,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ZV4QQQ56Z3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -495,6 +521,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
