@@ -23,7 +23,7 @@ struct Message: Hashable, Identifiable {
     let id: UUID
 //  let createdAt: timeOrSmth ( will actually be helpful when loading in messages, but not rn
     let speaker: Speaker
-    let text: String
+    var text: String
     init(speaker: Speaker, text: String) {
         self.speaker = speaker
         self.text = text

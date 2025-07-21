@@ -26,7 +26,7 @@ actor ModelManager {
     func buildLocalModelURL(modelID: String, filename: String) -> URL {
         let sanitizedModelID = modelID.replacingOccurrences(of: "/", with: "_")
         
-        let filePath = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let filePath = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first!
             .appendingPathComponent("Models", isDirectory: true)
             .appendingPathComponent(sanitizedModelID, isDirectory: true)
             .appendingPathComponent(filename)
@@ -41,7 +41,7 @@ actor ModelManager {
         let fm = FileManager.default
         
         let support = try fm.url(
-            for: .applicationSupportDirectory,
+            for: .libraryDirectory,
             in: .userDomainMask,
             appropriateFor: nil,
             create: true
@@ -52,6 +52,8 @@ actor ModelManager {
         let destDir = support
             .appendingPathComponent("Models", isDirectory: true)
             .appendingPathComponent(sanitizedModelID, isDirectory: true)
+        
+        print("dest: \(destDir.path())")
             
         try fm.createDirectory(at: destDir, withIntermediateDirectories: true)
         
@@ -65,6 +67,6 @@ actor ModelManager {
         
 
         // Returning URL from the root of the custom directories to avoid file error related to sandboxing
-        return URL(filePath: "Models")!.appendingPathComponent(sanitizedModelID, isDirectory: true).appendingPathComponent(filename)
+        return URL(string: "Models")!.appendingPathComponent(sanitizedModelID, isDirectory: true).appendingPathComponent(filename)
     }
 }

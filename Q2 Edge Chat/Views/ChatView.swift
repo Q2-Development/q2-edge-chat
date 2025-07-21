@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import LLamaSwift
 
 struct ChatView: View {
     @State var chatTitle: String = "Chat Title"
@@ -65,7 +66,7 @@ struct ChatView: View {
 
 struct InputView: View {
     private let SYMBOL_SIZE_LENGTH: CGFloat = 25
-    @State var selectedModel = "q2-custom-2b"
+    @State var selectedModel = "bartowski/Llama-3.2-1B-Instruct-GGUF"
     @State var prompt: String = ""
     @ObservedObject var store: MessageStore
     
@@ -98,10 +99,46 @@ struct InputView: View {
                 Spacer()
                 
                 Button  {
-                    print("Sending prompt: \(prompt)")
-                    store.messages.append(Message(speaker: .user, text: prompt))
-                    
-                    prompt = ""
+                    do {
+                        Task {
+                            print("Sending prompt: \(prompt)")
+                            store.messages.append(Message(speaker: .user, text: prompt))
+                            
+                            print("cleared prompt")
+                            let llamaPrompt = prompt
+                            prompt = ""
+                            var response = ""
+                            
+                            print("loaded store")
+                            let modelStore = try ManifestStore()
+                            if let downloadedModel = await modelStore.first() {
+                                let model = try Model(modelPath: downloadedModel.url().path() )
+                                let llama = LLama(model: model)
+                                
+                                // Results are delivered through an `AsyncStream`
+                                store.messages.append(Message(speaker: .assistant, text: response))
+                                for try await token in await llama.infer(prompt: llamaPrompt, maxTokens: 1024) {
+                                    print(token, terminator: "")
+                                    response += token
+                                    store.messages[store.messages.count-1].text = response
+                                }
+                            }else {
+                                print("models not downloaded")
+                                let entry = await modelStore.download(quickChatModelID: selectedModel)
+                                let model = try Model(modelPath: (entry?.url().path())!)
+                                let llama = LLama(model: model)
+                                
+                                // Results are delivered through an `AsyncStream`
+                                store.messages.append(Message(speaker: .assistant, text: response))
+                                for try await token in await llama.infer(prompt: llamaPrompt, maxTokens: 1024) {
+                                    print(token, terminator: "")
+                                    response += token
+                                    store.messages[store.messages.count-1].text = response
+                                }
+                            }
+
+                        }
+                    }
                 } label: {
                     Image(systemName: "arrow.up.circle")
                         .resizable()
