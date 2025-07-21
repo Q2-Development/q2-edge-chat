@@ -93,7 +93,6 @@ struct FrontPageView: View {
             if await store.all().contains(where: { $0.id == quickChatModelID }) {
                 message = "\(quickChatModelID) is already available."
                 isDownloading = false
-
                 return
             }
 

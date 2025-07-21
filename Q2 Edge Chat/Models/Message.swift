@@ -11,6 +11,14 @@ enum Speaker {
     case system, assistant, user
 }
 
+class MessageStore: ObservableObject {
+    @Published var messages: [Message]
+    
+    init (messages: [Message]) {
+        self.messages = messages
+    }
+}
+
 struct Message: Hashable, Identifiable {
     let id: UUID
 //  let createdAt: timeOrSmth ( will actually be helpful when loading in messages, but not rn

@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		139FBB6D2E2A24F2003EF52B /* LlamaFramework in Frameworks */ = {isa = PBXBuildFile; productRef = 139FBB6C2E2A24F2003EF52B /* LlamaFramework */; };
 		13B882522E2B7716006A0005 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B8824E2E2B7716006A0005 /* Assets.xcassets */; };
 		13B882542E2B7716006A0005 /* Q2_Edge_ChatApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B882502E2B7716006A0005 /* Q2_Edge_ChatApp.swift */; };
 		13B882552E2B7716006A0005 /* FrontPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B8824C2E2B7716006A0005 /* FrontPageView.swift */; };
@@ -17,6 +16,7 @@
 		21E506582E2D1FD200D26F61 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21E506572E2D1FD200D26F61 /* ChatView.swift */; };
 		21E5065C2E2D4E3F00D26F61 /* DynamicTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21E5065B2E2D4E3F00D26F61 /* DynamicTextEditor.swift */; };
 		21E506612E2D651D00D26F61 /* MessagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21E506602E2D651D00D26F61 /* MessagesView.swift */; };
+		21E506AB2E2DBB4B00D26F61 /* LLamaSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 21E506AA2E2DBB4B00D26F61 /* LLamaSwift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -92,7 +92,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				139FBB6D2E2A24F2003EF52B /* LlamaFramework in Frameworks */,
+				21E506AB2E2DBB4B00D26F61 /* LLamaSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -120,6 +120,7 @@
 				139FBB672E2A2281003EF52B /* LlamaPackage */,
 				139FBB4B2E2A1D37003EF52B /* Q2 Edge ChatTests */,
 				139FBB552E2A1D37003EF52B /* Q2 Edge ChatUITests */,
+				21E506A62E2DBB1C00D26F61 /* Frameworks */,
 				139FBB3C2E2A1D35003EF52B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -167,6 +168,13 @@
 			path = Services;
 			sourceTree = "<group>";
 		};
+		21E506A62E2DBB1C00D26F61 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -188,7 +196,7 @@
 			);
 			name = "Q2 Edge Chat";
 			packageProductDependencies = (
-				139FBB6C2E2A24F2003EF52B /* LlamaFramework */,
+				21E506AA2E2DBB4B00D26F61 /* LLamaSwift */,
 			);
 			productName = "Q2 Edge Chat";
 			productReference = 139FBB3B2E2A1D35003EF52B /* Q2 Edge Chat.app */;
@@ -273,7 +281,7 @@
 			mainGroup = 139FBB322E2A1D35003EF52B;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				139FBB6B2E2A24F2003EF52B /* XCLocalSwiftPackageReference "LlamaPackage" */,
+				21E506A92E2DBB4B00D26F61 /* XCRemoteSwiftPackageReference "llama-cpp-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 139FBB3C2E2A1D35003EF52B /* Products */;
@@ -644,17 +652,22 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		139FBB6B2E2A24F2003EF52B /* XCLocalSwiftPackageReference "LlamaPackage" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = LlamaPackage;
+/* Begin XCRemoteSwiftPackageReference section */
+		21E506A92E2DBB4B00D26F61 /* XCRemoteSwiftPackageReference "llama-cpp-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Q2-Development/llama-cpp-swift";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
 		};
-/* End XCLocalSwiftPackageReference section */
+/* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		139FBB6C2E2A24F2003EF52B /* LlamaFramework */ = {
+		21E506AA2E2DBB4B00D26F61 /* LLamaSwift */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = LlamaFramework;
+			package = 21E506A92E2DBB4B00D26F61 /* XCRemoteSwiftPackageReference "llama-cpp-swift" */;
+			productName = LLamaSwift;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

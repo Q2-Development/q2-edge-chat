@@ -9,16 +9,32 @@ import SwiftUI
 
 struct ChatView: View {
     @State var chatTitle: String = "Chat Title"
+    @StateObject var store : MessageStore = MessageStore(messages: [
+        Message(speaker: Speaker.user, text: "This is a very long paragraph that will for sure continue to keep going until it will now longer update in a defined way and go off the page"),
+        Message(speaker: Speaker.user, text: "test"),
+        Message(speaker: Speaker.user, text: "test"),
+        Message(speaker: Speaker.user, text: "test"),
+        Message(speaker: Speaker.user, text: "test"),
+        Message(speaker: Speaker.assistant, text: "test"),
+        Message(speaker: Speaker.user, text: "test"),
+        Message(speaker: Speaker.user, text: "test"),
+        Message(speaker: Speaker.assistant, text: "test"),
+        Message(speaker: Speaker.user, text: "test"),
+        Message(speaker: Speaker.assistant, text: "test"),
+        Message(speaker: Speaker.user, text: "test"),
+        Message(speaker: Speaker.user, text: "test"),
+        Message(speaker: Speaker.assistant, text: "testy")
+    ])
     var body: some View {
         NavigationStack {
             VStack {
-                MessagesView()
-                InputView()
+                MessagesView(store: store)
+                InputView(store: store)
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
-                        
+
                     } label: {
                         Image(systemName: "line.3.horizontal")
                     }
@@ -51,6 +67,7 @@ struct InputView: View {
     private let SYMBOL_SIZE_LENGTH: CGFloat = 25
     @State var selectedModel = "q2-custom-2b"
     @State var prompt: String = ""
+    @ObservedObject var store: MessageStore
     
 
     var body: some View {
@@ -82,6 +99,9 @@ struct InputView: View {
                 
                 Button  {
                     print("Sending prompt: \(prompt)")
+                    store.messages.append(Message(speaker: .user, text: prompt))
+                    
+                    prompt = ""
                 } label: {
                     Image(systemName: "arrow.up.circle")
                         .resizable()
@@ -93,3 +113,4 @@ struct InputView: View {
         }
     }
 }
+//

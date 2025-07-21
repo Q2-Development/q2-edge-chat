@@ -19,25 +19,10 @@ struct MessageView: View {
 
 
 struct MessagesView: View {
-    @State var messages: [Message] = [
-        Message(speaker: Speaker.user, text: "This is a very long paragraph that will for sure continue to keep going until it will now longer update in a defined way and go off the page"),
-        Message(speaker: Speaker.user, text: "test"),
-        Message(speaker: Speaker.user, text: "test"),
-        Message(speaker: Speaker.user, text: "test"),
-        Message(speaker: Speaker.user, text: "test"),
-        Message(speaker: Speaker.assistant, text: "test"),
-        Message(speaker: Speaker.user, text: "test"),
-        Message(speaker: Speaker.user, text: "test"),
-        Message(speaker: Speaker.assistant, text: "test"),
-        Message(speaker: Speaker.user, text: "test"),
-        Message(speaker: Speaker.assistant, text: "test"),
-        Message(speaker: Speaker.user, text: "test"),
-        Message(speaker: Speaker.user, text: "test"),
-        Message(speaker: Speaker.assistant, text: "testy")
-    ]
+    @ObservedObject var store: MessageStore
     var body: some View {
         ScrollView {
-            ForEach(messages, id: \.self){ message in
+            ForEach(store.messages, id: \.self){ message in
                 if (message.speaker == Speaker.user) {
                     HStack {
                         Spacer()
