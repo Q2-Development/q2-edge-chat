@@ -1,4 +1,5 @@
 import Foundation
+import LLamaSwift
 
 struct HFSibling: Codable {
     let rfilename: String
@@ -22,6 +23,17 @@ actor ModelManager {
         return try JSONDecoder().decode(HFModel.self, from: data)
     }
 
+    func buildLocalModelURL(modelID: String, filename: String) -> URL {
+        let sanitizedModelID = modelID.replacingOccurrences(of: "/", with: "_")
+        
+        let filePath = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("Models", isDirectory: true)
+            .appendingPathComponent(sanitizedModelID, isDirectory: true)
+            .appendingPathComponent(filename)
+        
+        return filePath
+    }
+    
     func downloadModelFile(from fileURL: URL, modelID: String, filename: String) async throws -> URL {
         
         let (tempURL, _) = try await URLSession.shared.download(from: fileURL, delegate: nil)
@@ -29,7 +41,7 @@ actor ModelManager {
         let fm = FileManager.default
         
         let support = try fm.url(
-            for: .applicationSupportDirectory,
+            for: .libraryDirectory,
             in: .userDomainMask,
             appropriateFor: nil,
             create: true
@@ -40,6 +52,8 @@ actor ModelManager {
         let destDir = support
             .appendingPathComponent("Models", isDirectory: true)
             .appendingPathComponent(sanitizedModelID, isDirectory: true)
+        
+        print("dest: \(destDir.path())")
             
         try fm.createDirectory(at: destDir, withIntermediateDirectories: true)
         
@@ -51,6 +65,8 @@ actor ModelManager {
         
         try fm.moveItem(at: tempURL, to: destURL)
         
-        return destURL
+
+        // Returning URL from the root of the custom directories to avoid file error related to sandboxing
+        return URL(string: "Models")!.appendingPathComponent(sanitizedModelID, isDirectory: true).appendingPathComponent(filename)
     }
 }
