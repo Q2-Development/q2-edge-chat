@@ -1,10 +1,12 @@
 import SwiftUI
 
 struct ModelPickerView: View {
-    @Binding var selection: String?
+    @Binding var selection: String
     let onBrowse: () -> Void
 
     @State private var localModels: [ManifestEntry] = []
+    private let store = try! ManifestStore()
+    @State private var cancellable: AnyCancellable?
 
     var body: some View {
         Menu {
@@ -29,9 +31,11 @@ struct ModelPickerView: View {
             .cornerRadius(8)
         }
         .onAppear {
-            Task {
-                localModels = await (try? ManifestStore())?.all() ?? []
-            }
+            Task { localModels = await store.all() }
+            cancellable = store.didChange
+                .receive(on: RunLoop.main)
+                .sink { _ in Task { localModels = await store.all() } }
         }
+        .onDisappear { cancellable?.cancel() }
     }
 }

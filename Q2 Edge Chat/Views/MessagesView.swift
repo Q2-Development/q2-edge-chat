@@ -19,24 +19,11 @@ struct MessageView: View {
 
 
 struct MessagesView: View {
-    @ObservedObject var store: MessageStore
+    let messages: [Message]
     var body: some View {
         ScrollView {
-            ForEach(store.messages, id: \.self){ message in
-                if (message.speaker == Speaker.user) {
-                    HStack {
-                        Spacer()
-                        MessageView(message: message)
-                    }
-                }else {
-                    HStack {
-                        MessageView(message: message)
-                        Spacer()
-                    }
-                }
-            }
+            LazyVStack { ForEach(messages) { MessageRow(message:$0) } }
         }
-        .contentMargins(10, for: .scrollContent)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
+

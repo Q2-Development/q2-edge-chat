@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Combine
 
 @MainActor
 class BrowseModelsViewModel: ObservableObject {
@@ -7,9 +8,17 @@ class BrowseModelsViewModel: ObservableObject {
     @Published var localEntries: [ManifestEntry] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
-
+    
+    private var cancellables = Set<AnyCancellable>()
     private let manager = ModelManager()
     private let store = try! ManifestStore()
+    
+    init() {
+            store.didChange
+                .receive(on: RunLoop.main)
+                .sink { [weak self] _ in Task { await self?.loadLocal() } }
+                .store(in: &cancellables)
+        }
 
     func loadLocal() async {
         localEntries = await store.all()

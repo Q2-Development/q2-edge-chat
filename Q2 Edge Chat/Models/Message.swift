@@ -1,36 +1,22 @@
-//
-//  Message.swift
-//  Q2 Edge Chat
-//
-//  Created by AJ Nettles on 7/20/25.
-//
-
 import Foundation
 
-enum Speaker {
-    case system, assistant, user
-}
-
-class MessageStore: ObservableObject {
-    @Published var messages: [Message]
-    
-    init (messages: [Message]) {
-        self.messages = messages
+struct Message: Identifiable, Codable, Hashable {
+    enum Speaker: String, Codable {
+        case user, assistant
     }
-}
 
-struct Message: Hashable, Identifiable {
     let id: UUID
-//  let createdAt: timeOrSmth ( will actually be helpful when loading in messages, but not rn
-    let speaker: Speaker
+    var speaker: Speaker
     var text: String
-    init(speaker: Speaker, text: String) {
+    var timestamp: Date
+
+    init(id: UUID = UUID(),
+         speaker: Speaker,
+         text: String,
+         timestamp: Date = Date()) {
+        self.id = id
         self.speaker = speaker
         self.text = text
-        self.id = UUID()
-    }
-    
-    static func ==(lhs: Message, rhs: Message) -> Bool{
-        return false
+        self.timestamp = timestamp
     }
 }

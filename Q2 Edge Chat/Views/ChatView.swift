@@ -1,68 +1,42 @@
 import SwiftUI
 
 struct ChatView: View {
-    @StateObject private var vm = ChatViewModel()
-    @State private var showBrowser = false
+    @ObservedObject var manager: ChatManager
+    @Binding var session: ChatSession
+    @StateObject private var vm: ChatViewModel
+
+    init(manager: ChatManager, session: Binding<ChatSession>) {
+        self.manager = manager
+        self._session = session
+        self._vm = StateObject(wrappedValue: ChatViewModel(manager: manager, session: session))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            // Picker + settings toolbar
             HStack {
-                ModelPickerView(selection: $vm.selectedModelID) {
-                    showBrowser = true
+                ModelPickerView(selection: $session.modelID) {
+                    manager.isSidebarHidden = false
                 }
                 Spacer()
-                Button {
-                    // later: open SettingsView
-                } label: {
-                    Image(systemName: "gearshape")
-                        .imageScale(.large)
-                }
+                Image(systemName: "gearshape") // placeholder
             }
             .padding()
 
             Divider()
 
-            // Messages list
-            MessagesView(store: vm.messages)
+            MessagesView(messages: session.messages)
 
             Divider()
 
-            // Input field + send button
             HStack {
                 DynamicTextEditor(text: $vm.inputText)
                     .frame(minHeight: 40, maxHeight: 120)
-                    .padding(.vertical, 8)
-
-                Button("Send") {
-                    Task { await vm.send() }
-                }
-                .disabled(vm.isSending || vm.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .padding(.horizontal)
+                Button("Send") { Task { await vm.send() } }
+                    .disabled(vm.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
-            .padding(.horizontal)
+            .padding()
         }
-        .navigationTitle("Chat")
+        .navigationTitle(session.title)
         .navigationBarTitleDisplayMode(.inline)
-        .overlay(
-            // error banner
-            Group {
-                if let msg = vm.errorMessage {
-                    Text(msg)
-                        .font(.footnote)
-                        .foregroundColor(.white)
-                        .padding(8)
-                        .background(Color.red)
-                        .cornerRadius(6)
-                        .padding(.top, 8)
-                }
-            },
-            alignment: .top
-        )
-        .sheet(isPresented: $showBrowser) {
-            NavigationStack {
-                ModelBrowserView()
-            }
-        }
     }
 }

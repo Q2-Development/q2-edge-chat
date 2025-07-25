@@ -23,24 +23,12 @@ struct FrontPageView: View {
 
             Spacer()
 
-            VStack(spacing: 16) {
-                NavigationLink(destination: ModelBrowserView()) {
-                    Text("Browse Models")
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.primary)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                }
+            VStack(spacing:16){
+                NavigationLink("Browse Models") { ModelBrowserView() }
+                    .buttonStyle(PrimaryButton())
 
-                NavigationLink(destination: ChatView()) {
-                    Text("Chat")
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.accentColor)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                }
+                NavigationLink("Chat") { ChatWorkspaceView() }
+                    .buttonStyle(AccentButton())
             }
             .padding(.horizontal, 40)
 
