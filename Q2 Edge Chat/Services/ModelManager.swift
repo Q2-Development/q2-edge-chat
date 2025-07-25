@@ -11,6 +11,13 @@ struct HFModel: Codable {
 }
 
 actor ModelManager {
+    private let pageSize = 20
+    func fetchModels() async throws -> [HFModel] {
+            let url = URL(string: "https://huggingface.co/api/models?full=true&limit=\(pageSize)")!
+            let (data, _) = try await URLSession.shared.data(from: url)
+            return try JSONDecoder().decode([HFModel].self, from: data)
+        }
+    
     func fetchModelInfo(modelID: String) async throws -> HFModel {
         
         let urlString = "https://huggingface.co/api/models/\(modelID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? "")"

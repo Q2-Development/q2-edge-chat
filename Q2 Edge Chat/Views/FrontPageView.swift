@@ -1,21 +1,14 @@
 import SwiftUI
-import LLamaSwift
+
 struct FrontPageView: View {
-    @State private var message = ""
-    @State private var isDownloading = false
-
-    private let quickChatModelID = "bartowski/Llama-3.2-1B-Instruct-GGUF"
-
     var body: some View {
         VStack(spacing: 20) {
             Spacer()
 
-            Image(systemName: "bubble.left.and.bubble.right.fill")
+            Image("AppLogo")
                 .resizable()
                 .scaledToFit()
-                .frame(width: 100, height: 100)
-                .foregroundColor(.accentColor)
-
+                .frame(width: 120, height: 120)
 
             Text("Q2 Edge Chat")
                 .font(.largeTitle)
@@ -31,107 +24,43 @@ struct FrontPageView: View {
             Spacer()
 
             VStack(spacing: 16) {
-                Button("Browse Models") {
-                    message = "Browse Models tapped"
+                NavigationLink(destination: ModelBrowserView()) {
+                    Text("Browse Models")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.primary)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
                 }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.primary.opacity(0.1))
-                .foregroundColor(.primary)
-                .cornerRadius(10)
 
-                Button(action: {
-                    Task {
-                        await handleQuickChat()
-                    }
-                }) {
-                    if isDownloading {
-                        HStack {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            Text("Downloading...")
-                                .padding(.leading, 8)
-                        }
-                    } else {
-                        Text("Quick Chat")
-                    }
+                NavigationLink(destination: ChatView()) {
+                    Text("Chat")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.accentColor)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
                 }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.accentColor)
-                .foregroundColor(.white)
-                .cornerRadius(10)
-                .disabled(isDownloading)
             }
             .padding(.horizontal, 40)
 
             Spacer()
-
-            if !message.isEmpty {
-                Text(message)
-                    .font(.footnote)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 40)
-                    .multilineTextAlignment(.center)
-                    .transition(.opacity)
-            }
         }
         .background(Color(.systemBackground))
-//        .ignoresSafeArea()
-    }
-
-
-    private func handleQuickChat() async {
-        isDownloading = true
-        message = ""
-        do {
-            let store = try ManifestStore()
-           
-
-
-            
-            if await store.all().contains(where: { $0.id == quickChatModelID }) {
-                message = "\(quickChatModelID) is already available."
-                isDownloading = false
-                return
-            }
-
-            message = "Downloading \(quickChatModelID)..."
-            let manager = ModelManager()
-            
-            let modelInfo = try await manager.fetchModelInfo(modelID: quickChatModelID)
-            
-            let fileToDownload = modelInfo.siblings.first(where: { $0.rfilename.lowercased().hasSuffix(".gguf") })
-            
-            guard let file = fileToDownload else {
-                throw NSError(domain: "AppError", code: 1, userInfo: [NSLocalizedDescriptionKey: "No suitable .gguf file found for the model."])
-            }
-            
-            let downloadURLString = "https://huggingface.co/\(modelInfo.id)/resolve/main/\(file.rfilename)"
-            guard let downloadURL = URL(string: downloadURLString) else {
-                throw URLError(.badURL)
-            }
-            
-            let localURL = try await manager.downloadModelFile(from: downloadURL, modelID: modelInfo.id, filename: file.rfilename)
-            
-            try await store.add(ManifestEntry(id: modelInfo.id, localURL: localURL, downloadedAt: Date()))
-            
-            message = "Successfully downloaded \(file.rfilename)!"
-
-        } catch {
-            message = "Download failed: \(error.localizedDescription)"
-        }
-        isDownloading = false
+        .ignoresSafeArea()
     }
 }
 
 struct FrontPageView_Previews: PreviewProvider {
     static var previews: some View {
-        Group {
+        NavigationStack {
             FrontPageView()
-                .preferredColorScheme(.light)
-            FrontPageView()
-                .preferredColorScheme(.dark)
         }
+        .preferredColorScheme(.light)
+
+        NavigationStack {
+            FrontPageView()
+        }
+        .preferredColorScheme(.dark)
     }
 }
