@@ -1,11 +1,9 @@
 import Foundation
-import Combine
 import SwiftUI
 
 @MainActor
 final class ChatViewModel: ObservableObject {
-    @Published var inputText: String = ""
-    @Published var errorMessage: String?
+    @Published var inputText = ""
 
     private let manager: ChatManager
     private var sessionBinding: Binding<ChatSession>

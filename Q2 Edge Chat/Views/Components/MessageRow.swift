@@ -5,23 +5,24 @@ struct MessageRow: View {
 
     var body: some View {
         HStack {
-            if message.role == .assistant {
-                bubble
+            if message.speaker == .assistant {
+                bubble(color: Color(.systemGray5), textColor: .primary)
                 Spacer()
             } else {
                 Spacer()
-                bubble.foregroundColor(.white)
-                    .background(Color.accentColor)
+                bubble(color: Color.accentColor, textColor: .white)
             }
         }
         .padding(.horizontal)
         .padding(.vertical, 2)
     }
 
-    private var bubble: some View {
+    @ViewBuilder
+    private func bubble(color: Color, textColor: Color) -> some View {
         Text(message.text)
+            .foregroundColor(textColor)
             .padding(10)
-            .background(Color(.systemGray5))
+            .background(color)
             .cornerRadius(12)
     }
 }

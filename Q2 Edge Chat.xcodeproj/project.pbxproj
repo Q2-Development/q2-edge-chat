@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1371CE602E34333600209092 /* ModelManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1371CE5F2E34333400209092 /* ModelManifest.swift */; };
 		13AF4A922E3336EA004AC50F /* BrowseModelsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13AF4A912E3336DF004AC50F /* BrowseModelsViewModel.swift */; };
 		13AF4A942E333729004AC50F /* ModelBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13AF4A932E333720004AC50F /* ModelBrowserView.swift */; };
 		13AF4A962E333AB5004AC50F /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13AF4A952E333AB0004AC50F /* ChatViewModel.swift */; };
@@ -19,7 +20,6 @@
 		13B882542E2B7716006A0005 /* Q2_Edge_ChatApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B882502E2B7716006A0005 /* Q2_Edge_ChatApp.swift */; };
 		13B882552E2B7716006A0005 /* FrontPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B8824C2E2B7716006A0005 /* FrontPageView.swift */; };
 		13B882582E2C31D8006A0005 /* ModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B882572E2C31D3006A0005 /* ModelManager.swift */; };
-		13B8825A2E2C389C006A0005 /* ModelManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B882592E2C3899006A0005 /* ModelManifest.swift */; };
 		21E506542E2D1DE200D26F61 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21E506532E2D1DE200D26F61 /* ContentView.swift */; };
 		21E506582E2D1FD200D26F61 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21E506572E2D1FD200D26F61 /* ChatView.swift */; };
 		21E5065C2E2D4E3F00D26F61 /* DynamicTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21E5065B2E2D4E3F00D26F61 /* DynamicTextEditor.swift */; };
@@ -45,6 +45,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		1371CE5F2E34333400209092 /* ModelManifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManifest.swift; sourceTree = "<group>"; };
 		139FBB3B2E2A1D35003EF52B /* Q2 Edge Chat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Q2 Edge Chat.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		139FBB482E2A1D37003EF52B /* Q2 Edge ChatTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Q2 Edge ChatTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		139FBB522E2A1D37003EF52B /* Q2 Edge ChatUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Q2 Edge ChatUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -60,7 +61,6 @@
 		13B8824E2E2B7716006A0005 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		13B882502E2B7716006A0005 /* Q2_Edge_ChatApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Q2_Edge_ChatApp.swift; sourceTree = "<group>"; };
 		13B882572E2C31D3006A0005 /* ModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManager.swift; sourceTree = "<group>"; };
-		13B882592E2C3899006A0005 /* ModelManifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManifest.swift; sourceTree = "<group>"; };
 		21E506532E2D1DE200D26F61 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		21E506572E2D1FD200D26F61 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		21E5065B2E2D4E3F00D26F61 /* DynamicTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicTextEditor.swift; sourceTree = "<group>"; };
@@ -201,8 +201,8 @@
 		13B882562E2C31C2006A0005 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				1371CE5F2E34333400209092 /* ModelManifest.swift */,
 				13AF4A9C2E342DB1004AC50F /* ChatManager.swift */,
-				13B882592E2C3899006A0005 /* ModelManifest.swift */,
 				13B882572E2C31D3006A0005 /* ModelManager.swift */,
 			);
 			path = Services;
@@ -377,7 +377,7 @@
 				13AF4A982E333C30004AC50F /* ModelPickerView.swift in Sources */,
 				13B882552E2B7716006A0005 /* FrontPageView.swift in Sources */,
 				13AF4A9F2E342ED2004AC50F /* ChatWorkspaceView.swift in Sources */,
-				13B8825A2E2C389C006A0005 /* ModelManifest.swift in Sources */,
+				1371CE602E34333600209092 /* ModelManifest.swift in Sources */,
 				13AF4A962E333AB5004AC50F /* ChatViewModel.swift in Sources */,
 				13B882582E2C31D8006A0005 /* ModelManager.swift in Sources */,
 				13AF4AA12E342EF0004AC50F /* ChatListView.swift in Sources */,

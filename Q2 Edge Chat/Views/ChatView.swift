@@ -4,6 +4,7 @@ struct ChatView: View {
     @ObservedObject var manager: ChatManager
     @Binding var session: ChatSession
     @StateObject private var vm: ChatViewModel
+    @State private var showBrowser = false
 
     init(manager: ChatManager, session: Binding<ChatSession>) {
         self.manager = manager
@@ -13,17 +14,11 @@ struct ChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                ModelPickerView(selection: $session.modelID) {
-                    manager.isSidebarHidden = false
-                }
-                Spacer()
-                Image(systemName: "gearshape") // placeholder
+            NavigationLink(isActive: $showBrowser) {
+                ModelBrowserView()
+            } label: {
+                EmptyView()
             }
-            .padding()
-
-            Divider()
-
             MessagesView(messages: session.messages)
 
             Divider()
@@ -31,12 +26,35 @@ struct ChatView: View {
             HStack {
                 DynamicTextEditor(text: $vm.inputText)
                     .frame(minHeight: 40, maxHeight: 120)
+
                 Button("Send") { Task { await vm.send() } }
                     .disabled(vm.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
-            .padding()
+            .padding(.horizontal)
+            .padding(.bottom, 4)
         }
         .navigationTitle(session.title)
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button {
+                    withAnimation { manager.isSidebarHidden.toggle(); onBrowse: do { showBrowser = true}}
+                } label: {
+                    Image(systemName: "line.3.horizontal")
+                }
+                .buttonStyle(.plain)
+            }
+
+            ToolbarItem(placement: .principal) {
+                ModelPickerView(selection: $session.modelID) {
+                    manager.isSidebarHidden = false
+                }
+            }
+
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Image(systemName: "gearshape")
+            }
+        }
     }
 }

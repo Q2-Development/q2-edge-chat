@@ -1,5 +1,28 @@
 import SwiftUI
 
+struct PrimaryButton: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(Color.primary)
+            .foregroundColor(.white)
+            .cornerRadius(10)
+            .opacity(configuration.isPressed ? 0.75 : 1)
+    }
+}
+struct AccentButton: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(Color.accentColor)
+            .foregroundColor(.white)
+            .cornerRadius(10)
+            .opacity(configuration.isPressed ? 0.75 : 1)
+    }
+}
+
 struct FrontPageView: View {
     var body: some View {
         VStack(spacing: 20) {

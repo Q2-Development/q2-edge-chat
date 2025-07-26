@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 struct ModelPickerView: View {
     @Binding var selection: String
@@ -21,8 +22,11 @@ struct ModelPickerView: View {
             }
         } label: {
             HStack(spacing: 4) {
-                Text(selection ?? "Select Model")
+                Text(selection)
                     .lineLimit(1)
+                    .truncationMode(.middle)
+                    .foregroundColor(.primary)
+                    .frame(maxWidth: 200, alignment: .center)
                 Image(systemName: "chevron.down")
             }
             .padding(.vertical, 8)

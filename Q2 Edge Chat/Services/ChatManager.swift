@@ -1,31 +1,35 @@
 import Foundation
 import Combine
+import SwiftUI
 
 @MainActor
 final class ChatManager: ObservableObject {
     @Published var sessions: [ChatSession] = []
     @Published var activeID: UUID?
-    @Published var isSidebarHidden: Bool = true
+    @Published var isSidebarHidden = true
 
     private let manifest = try! ManifestStore()
-    private var cancellables = Set<AnyCancellable>()
+    private var bag = Set<AnyCancellable>()
+
+    // MARK: ───────── Init
 
     init() {
         loadSessions()
-        manifest.didChange
+
+        manifest.didChange              // refresh chats if user deletes a model
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
-                self?.sanitizeSessions()
+                Task { await self?.sanitizeSessions() }
             }
-            .store(in: &cancellables)
+            .store(in: &bag)
     }
 
-    // MARK: CRUD
+    // MARK: ───────── CRUD
 
     func newChat() {
-        let session = ChatSession.empty(defaultModelID: manifest.all().first?.id)
-        sessions.insert(session, at: 0)
-        activeID = session.id
+        let chat = ChatSession.empty()
+        sessions.insert(chat, at: 0)
+        activeID = chat.id
         saveSessions()
     }
 
@@ -35,28 +39,30 @@ final class ChatManager: ObservableObject {
         saveSessions()
     }
 
-    // MARK: Send
+    // MARK: ───────── Messaging
 
     func send(_ text: String, in id: UUID) async {
         guard let idx = sessions.firstIndex(where: { $0.id == id }) else { return }
-        sessions[idx].messages.append(Message(role: .user, text: text))
 
-        // placeholder assistant reply
-        var assistant = Message(role: .assistant, text: "")
+        sessions[idx].messages.append(.init(speaker: .user, text: text))
+
+        var assistant = Message(speaker: .assistant, text: "")
         sessions[idx].messages.append(assistant)
         saveSessions()
 
-        let reply = "Stub reply for '\(text)' 🎉"
+        // Stubbed streaming reply
+        let reply = "Stub reply for “\(text)” 🎉"
         for char in reply {
-            try? await Task.sleep(nanoseconds: 30_000_000)
-            guard let a = sessions[idx].messages.lastIndex(of: assistant) else { continue }
-            sessions[idx].messages[a].text.append(char)
-            assistant = sessions[idx].messages[a]
+            try? await Task.sleep(nanoseconds: 25_000_000)
+            if let a = sessions[idx].messages.lastIndex(of: assistant) {
+                sessions[idx].messages[a].text.append(char)
+                assistant = sessions[idx].messages[a]
+            }
         }
         saveSessions()
     }
 
-    // MARK: Persistence (simple JSON)
+    // MARK: ───────── Persistence helpers
 
     private func sessionsFileURL() -> URL {
         let support = try! FileManager.default.url(
@@ -69,8 +75,9 @@ final class ChatManager: ObservableObject {
     }
 
     private func saveSessions() {
-        let data = try? JSONEncoder().encode(sessions)
-        try? data?.write(to: sessionsFileURL(), options: .atomic)
+        if let data = try? JSONEncoder().encode(sessions) {
+            try? data.write(to: sessionsFileURL(), options: .atomic)
+        }
     }
 
     private func loadSessions() {
@@ -78,19 +85,21 @@ final class ChatManager: ObservableObject {
             let data = try? Data(contentsOf: sessionsFileURL()),
             let saved = try? JSONDecoder().decode([ChatSession].self, from: data)
         else { return }
+
         sessions = saved
         activeID = sessions.first?.id
     }
 
-    private func sanitizeSessions() {
-        let validModelIDs = Set(manifest.all().map(\.id))
-        for i in sessions.indices {
-            if !validModelIDs.contains(sessions[i].modelID) {
-                sessions[i].modelID = ""
-            }
+    // MARK: ───────── Cleanup when models are removed
+
+    private func sanitizeSessions() async {
+        let validIDs = Set(await manifest.all().map(\.id))
+        for i in sessions.indices where !validIDs.contains(sessions[i].modelID) {
+            sessions[i].modelID = ""
         }
     }
 
-    // Helpers
+    // MARK: ───────── Convenience
+
     var activeIndex: Int? { sessions.firstIndex { $0.id == activeID } }
 }

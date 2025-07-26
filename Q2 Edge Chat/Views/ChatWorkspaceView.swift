@@ -10,16 +10,6 @@ struct ChatWorkspaceView: View {
                 ZStack(alignment: .leading) {
                     if let idx = cm.activeIndex {
                         ChatView(manager: cm, session: $cm.sessions[idx])
-                            .overlay(alignment: .topLeading) {
-                                if cm.isSidebarHidden {
-                                    Button {
-                                        withAnimation { cm.isSidebarHidden = false }
-                                    } label: {
-                                        Image(systemName: "line.3.horizontal")
-                                            .padding()
-                                    }
-                                }
-                            }
                     } else {
                         Text("No chats")
                     }
@@ -31,7 +21,7 @@ struct ChatWorkspaceView: View {
                     }
                 }
             }
-            #else
+            #else   // iPad / Mac
             NavigationSplitView {
                 ChatListView(manager: cm)
             } detail: {
@@ -42,6 +32,11 @@ struct ChatWorkspaceView: View {
                 }
             }
             #endif
+        }
+        .task {          // ⇢ runs once on first appear
+            if cm.sessions.isEmpty {
+                cm.newChat()        // auto-create initial session
+            }
         }
     }
 }
