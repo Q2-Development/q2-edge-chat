@@ -8,23 +8,20 @@ final class ChatManager: ObservableObject {
     @Published var activeID: UUID?
     @Published var isSidebarHidden = true
 
+    private var engines: [URL: LlamaEngine] = [:]
     private let manifest = try! ManifestStore()
     private var bag = Set<AnyCancellable>()
-
-    // MARK: ───────── Init
 
     init() {
         loadSessions()
 
-        manifest.didChange              // refresh chats if user deletes a model
+        manifest.didChange
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 Task { await self?.sanitizeSessions() }
             }
             .store(in: &bag)
     }
-
-    // MARK: ───────── CRUD
 
     func newChat() {
         let chat = ChatSession.empty()
@@ -39,31 +36,51 @@ final class ChatManager: ObservableObject {
         saveSessions()
     }
 
-    // MARK: ───────── Messaging
-
     func send(_ text: String, in id: UUID) async {
         guard let idx = sessions.firstIndex(where: { $0.id == id }) else { return }
-
         sessions[idx].messages.append(.init(speaker: .user, text: text))
-
         var assistant = Message(speaker: .assistant, text: "")
         sessions[idx].messages.append(assistant)
         saveSessions()
 
-        // Stubbed streaming reply
-        let reply = "Stub reply for “\(text)” 🎉"
-        for char in reply {
-            try? await Task.sleep(nanoseconds: 25_000_000)
-            if let a = sessions[idx].messages.lastIndex(of: assistant) {
-                sessions[idx].messages[a].text.append(char)
-                assistant = sessions[idx].messages[a]
+        let manifestEntries = await manifest.all()
+        guard
+            let entry = manifestEntries.first(where: { $0.id == sessions[idx].modelID })
+        else {
+            sessions[idx].messages.append(
+                .init(speaker: .assistant,
+                      text: "Selected model not downloaded.")
+            )
+            saveSessions()
+            return
+        }
+
+        do {
+            let engine = try engine(for: entry.localURL)
+            try await engine.generate(prompt: text) { token in
+                Task { @MainActor in
+                    if let ai = self.sessions[idx].messages.lastIndex(of: assistant) {
+                        self.sessions[idx].messages[ai].text.append(token)
+                        assistant = self.sessions[idx].messages[ai]
+                    }
+                }
             }
+        } catch {
+            sessions[idx].messages.append(.init(
+                speaker: .assistant,
+                text: "⚠️ \(error.localizedDescription)"
+            ))
         }
         saveSessions()
     }
 
-    // MARK: ───────── Persistence helpers
-
+    private func engine(for url: URL) throws -> LlamaEngine {
+        if let e = engines[url] { return e }
+        let e = try LlamaEngine(modelURL: url)
+        engines[url] = e
+        return e
+    }
+    
     private func sessionsFileURL() -> URL {
         let support = try! FileManager.default.url(
             for: .applicationSupportDirectory,
