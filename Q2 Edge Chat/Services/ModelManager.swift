@@ -13,10 +13,12 @@ struct HFModel: Codable {
 actor ModelManager {
     private let pageSize = 20
     func fetchModels() async throws -> [HFModel] {
-            let url = URL(string: "https://huggingface.co/api/models?full=true&limit=\(pageSize)")!
-            let (data, _) = try await URLSession.shared.data(from: url)
-            return try JSONDecoder().decode([HFModel].self, from: data)
+        guard let url = URL(string: "https://huggingface.co/api/models?full=true&limit=\(pageSize)") else {
+            throw ModelManagerError.networkError("Invalid API URL")
         }
+        let (data, _) = try await URLSession.shared.data(from: url)
+        return try JSONDecoder().decode([HFModel].self, from: data)
+    }
     
     func fetchModelInfo(modelID: String) async throws -> HFModel {
         
@@ -30,10 +32,14 @@ actor ModelManager {
         return try JSONDecoder().decode(HFModel.self, from: data)
     }
 
-    func buildLocalModelURL(modelID: String, filename: String) -> URL {
+    func buildLocalModelURL(modelID: String, filename: String) throws -> URL {
         let sanitizedModelID = modelID.replacingOccurrences(of: "/", with: "_")
         
-        let filePath = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first!
+        guard let libraryURL = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first else {
+            throw ModelManagerError.fileSystemError("Unable to access library directory")
+        }
+        
+        let filePath = libraryURL
             .appendingPathComponent("Models", isDirectory: true)
             .appendingPathComponent(sanitizedModelID, isDirectory: true)
             .appendingPathComponent(filename)
@@ -41,30 +47,33 @@ actor ModelManager {
         return filePath
     }
     
-    func downloadModelFile(from fileURL: URL, modelID: String, filename: String) async throws -> URL {
+    enum ModelManagerError: Error {
+        case fileSystemError(String)
+        case downloadError(String)
+        case networkError(String)
         
+        var localizedDescription: String {
+            switch self {
+            case .fileSystemError(let message):
+                return "File system error: \(message)"
+            case .downloadError(let message):
+                return "Download error: \(message)"
+            case .networkError(let message):
+                return "Network error: \(message)"
+            }
+        }
+    }
+    
+    func downloadModelFile(from fileURL: URL, modelID: String, filename: String) async throws -> URL {
         let (tempURL, _) = try await URLSession.shared.download(from: fileURL, delegate: nil)
         
         let fm = FileManager.default
-        
-        let support = try fm.url(
-            for: .libraryDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        )
-        
-        let sanitizedModelID = modelID.replacingOccurrences(of: "/", with: "_")
-        
-        let destDir = support
-            .appendingPathComponent("Models", isDirectory: true)
-            .appendingPathComponent(sanitizedModelID, isDirectory: true)
+        let destURL = try buildLocalModelURL(modelID: modelID, filename: filename)
+        let destDir = destURL.deletingLastPathComponent()
         
         print("dest: \(destDir.path())")
             
         try fm.createDirectory(at: destDir, withIntermediateDirectories: true)
-        
-        let destURL = destDir.appendingPathComponent(filename)
         
         if fm.fileExists(atPath: destURL.path) {
             try fm.removeItem(at: destURL)
@@ -72,8 +81,6 @@ actor ModelManager {
         
         try fm.moveItem(at: tempURL, to: destURL)
         
-
-        // Returning URL from the root of the custom directories to avoid file error related to sandboxing
-        return URL(string: "Models")!.appendingPathComponent(sanitizedModelID, isDirectory: true).appendingPathComponent(filename)
+        return destURL
     }
 }

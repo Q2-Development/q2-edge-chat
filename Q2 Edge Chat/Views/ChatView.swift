@@ -4,7 +4,6 @@ struct ChatView: View {
     @ObservedObject var manager: ChatManager
     @Binding var session: ChatSession
     @StateObject private var vm: ChatViewModel
-    @State private var showBrowser = false
 
     init(manager: ChatManager, session: Binding<ChatSession>) {
         self.manager = manager
@@ -14,11 +13,6 @@ struct ChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            NavigationLink(isActive: $showBrowser) {
-                ModelBrowserView()
-            } label: {
-                EmptyView()
-            }
             MessagesView(messages: session.messages)
 
             Divider()
@@ -39,7 +33,7 @@ struct ChatView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
-                    withAnimation { manager.isSidebarHidden.toggle(); onBrowse: do { showBrowser = true}}
+                    withAnimation { manager.isSidebarHidden.toggle() }
                 } label: {
                     Image(systemName: "line.3.horizontal")
                 }
@@ -47,9 +41,7 @@ struct ChatView: View {
             }
 
             ToolbarItem(placement: .principal) {
-                ModelPickerView(selection: $session.modelID) {
-                    manager.isSidebarHidden = false
-                }
+                ModelPickerView(selection: $session.modelID)
             }
 
             ToolbarItem(placement: .navigationBarTrailing) {

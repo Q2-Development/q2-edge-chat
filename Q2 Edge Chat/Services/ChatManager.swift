@@ -9,10 +9,19 @@ final class ChatManager: ObservableObject {
     @Published var isSidebarHidden = true
 
     private var engines: [URL: LlamaEngine] = [:]
-    private let manifest = try! ManifestStore()
+    private var engineLastUsed: [URL: Date] = [:]
+    private let maxCachedEngines = 3
+    private let manifest: ManifestStore
     private var bag = Set<AnyCancellable>()
+    private var activeTasks: [UUID: Task<Void, Never>] = [:]
 
     init() {
+        do {
+            self.manifest = try ManifestStore()
+        } catch {
+            fatalError("Failed to initialize ManifestStore: \(error.localizedDescription). Please ensure the app has proper file system permissions.")
+        }
+        
         loadSessions()
 
         manifest.didChange
@@ -31,12 +40,19 @@ final class ChatManager: ObservableObject {
     }
 
     func delete(_ id: UUID) {
+        // Cancel any active task for this session
+        activeTasks[id]?.cancel()
+        activeTasks.removeValue(forKey: id)
+        
         sessions.removeAll { $0.id == id }
         if activeID == id { activeID = sessions.first?.id }
         saveSessions()
     }
 
     func send(_ text: String, in id: UUID) async {
+        // Cancel any existing task for this session
+        activeTasks[id]?.cancel()
+        
         guard let idx = sessions.firstIndex(where: { $0.id == id }) else { return }
         sessions[idx].messages.append(.init(speaker: .user, text: text))
         var assistant = Message(speaker: .assistant, text: "")
@@ -55,34 +71,91 @@ final class ChatManager: ObservableObject {
             return
         }
 
-        do {
-            let engine = try engine(for: entry.localURL)
-            try await engine.generate(prompt: text) { token in
-                Task { @MainActor in
-                    if let ai = self.sessions[idx].messages.lastIndex(of: assistant) {
+        // Create cancellable task for generation
+        let task = Task {
+            do {
+                let engine = try engine(for: entry.localURL)
+                try await engine.generate(prompt: text) { token in
+                    Task { @MainActor in
+                        // Validate session still exists and index is valid
+                        guard idx < self.sessions.count,
+                              self.sessions[idx].id == id,
+                              let ai = self.sessions[idx].messages.lastIndex(of: assistant) else {
+                            return
+                        }
                         self.sessions[idx].messages[ai].text.append(token)
                         assistant = self.sessions[idx].messages[ai]
                     }
                 }
+            } catch is CancellationError {
+                // Handle cancellation gracefully
+                await MainActor.run {
+                    guard idx < self.sessions.count, self.sessions[idx].id == id else { return }
+                    if let ai = self.sessions[idx].messages.lastIndex(of: assistant) {
+                        self.sessions[idx].messages[ai].text.append(" [Cancelled]")
+                    }
+                }
+            } catch {
+                // Validate session still exists before adding error message
+                await MainActor.run {
+                    guard idx < self.sessions.count, self.sessions[idx].id == id else { return }
+                    self.sessions[idx].messages.append(.init(
+                        speaker: .assistant,
+                        text: "⚠️ \(error.localizedDescription)"
+                    ))
+                }
             }
-        } catch {
-            sessions[idx].messages.append(.init(
-                speaker: .assistant,
-                text: "⚠️ \(error.localizedDescription)"
-            ))
+            
+            await MainActor.run {
+                self.activeTasks.removeValue(forKey: id)
+                self.saveSessions()
+            }
         }
-        saveSessions()
+        
+        activeTasks[id] = task
+        await task.value
     }
 
     private func engine(for url: URL) throws -> LlamaEngine {
-        if let e = engines[url] { return e }
-        let e = try LlamaEngine(modelURL: url)
+        if let e = engines[url] {
+            engineLastUsed[url] = Date()
+            return e
+        }
+
+        // Clean up old engines if we're at capacity
+        if engines.count >= maxCachedEngines {
+            evictOldestEngine()
+        }
+
+        let fullURL = try FileManager.default.url(
+            for: .libraryDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: false
+        ).appendingPathComponent(url.path)
+
+        let e = try LlamaEngine(modelURL: fullURL)
         engines[url] = e
+        engineLastUsed[url] = Date()
         return e
     }
     
-    private func sessionsFileURL() -> URL {
-        let support = try! FileManager.default.url(
+    private func evictOldestEngine() {
+        guard let oldestURL = engineLastUsed.min(by: { $0.value < $1.value })?.key else {
+            return
+        }
+        
+        engines.removeValue(forKey: oldestURL)
+        engineLastUsed.removeValue(forKey: oldestURL)
+    }
+    
+    func clearAllEngines() {
+        engines.removeAll()
+        engineLastUsed.removeAll()
+    }
+    
+    private func sessionsFileURL() throws -> URL {
+        let support = try FileManager.default.url(
             for: .applicationSupportDirectory,
             in: .userDomainMask,
             appropriateFor: nil,
@@ -92,22 +165,26 @@ final class ChatManager: ObservableObject {
     }
 
     private func saveSessions() {
-        if let data = try? JSONEncoder().encode(sessions) {
-            try? data.write(to: sessionsFileURL(), options: .atomic)
+        do {
+            let data = try JSONEncoder().encode(sessions)
+            let url = try sessionsFileURL()
+            try data.write(to: url, options: .atomic)
+        } catch {
+            print("Failed to save sessions: \(error.localizedDescription)")
         }
     }
 
     private func loadSessions() {
-        guard
-            let data = try? Data(contentsOf: sessionsFileURL()),
-            let saved = try? JSONDecoder().decode([ChatSession].self, from: data)
-        else { return }
-
-        sessions = saved
-        activeID = sessions.first?.id
+        do {
+            let url = try sessionsFileURL()
+            let data = try Data(contentsOf: url)
+            let saved = try JSONDecoder().decode([ChatSession].self, from: data)
+            sessions = saved
+            activeID = sessions.first?.id
+        } catch {
+            print("Failed to load sessions: \(error.localizedDescription)")
+        }
     }
-
-    // MARK: ───────── Cleanup when models are removed
 
     private func sanitizeSessions() async {
         let validIDs = Set(await manifest.all().map(\.id))
@@ -115,8 +192,6 @@ final class ChatManager: ObservableObject {
             sessions[i].modelID = ""
         }
     }
-
-    // MARK: ───────── Convenience
 
     var activeIndex: Int? { sessions.firstIndex { $0.id == activeID } }
 }
