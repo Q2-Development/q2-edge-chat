@@ -36,11 +36,20 @@ final class ChatViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            await manager.send(prompt, in: session.id)
+            try await manager.send(prompt, in: session.id)
         } catch {
+            print("🔍 CHAT DEBUG: Error in send(): \(error)")
+            print("🔍 CHAT DEBUG: Error type: \(type(of: error))")
+            
             // Restore input text on error and show error message
             inputText = originalInput
-            errorMessage = "Failed to send message: \(error.localizedDescription)"
+            
+            // Provide specific error messages for different error types
+            if let llamaError = error as? LlamaEngineError {
+                errorMessage = "Model Error: \(llamaError.localizedDescription)"
+            } else {
+                errorMessage = "Failed to send message: \(error.localizedDescription)"
+            }
         }
         
         isLoading = false

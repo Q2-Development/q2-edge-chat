@@ -77,6 +77,7 @@ class BrowseModelsViewModel: ObservableObject {
                 localURL: localURL,
                 downloadedAt: Date()
             )
+            print("🔍 DOWNLOAD DEBUG: Created ManifestEntry with localURL: \(localURL.path)")
             try await store.add(entry)
             await loadLocal()
         } catch {
