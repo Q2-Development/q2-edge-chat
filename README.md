@@ -109,6 +109,18 @@ We welcome contributions! Please feel free to submit issues and pull requests.
 4. Test thoroughly on device
 5. Submit a pull request
 
+## Screenshots
+
+![Main Screen](readme_images/main.png)
+
+![Browse Models](readme_images/browse_models.png)
+
+![Chat Window](readme_images/chat_window.png)
+
+![Search Models](readme_images/search_models.png)
+
+![Sidebar](readme_images/sidebar.png)
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
