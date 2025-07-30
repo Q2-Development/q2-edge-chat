@@ -7,10 +7,25 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		139FBB6D2E2A24F2003EF52B /* LlamaFramework in Frameworks */ = {isa = PBXBuildFile; productRef = 139FBB6C2E2A24F2003EF52B /* LlamaFramework */; };
+		133B3A962E34670900F108AD /* LLamaSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 133B3A952E34670900F108AD /* LLamaSwift */; };
+		1371CE602E34333600209092 /* ModelManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1371CE5F2E34333400209092 /* ModelManifest.swift */; };
+		1371CE6C2E345FF700209092 /* LlamaEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1371CE612E34547700209092 /* LlamaEngine.swift */; };
+		13AF4A922E3336EA004AC50F /* BrowseModelsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13AF4A912E3336DF004AC50F /* BrowseModelsViewModel.swift */; };
+		13AF4A942E333729004AC50F /* ModelBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13AF4A932E333720004AC50F /* ModelBrowserView.swift */; };
+		13AF4A962E333AB5004AC50F /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13AF4A952E333AB0004AC50F /* ChatViewModel.swift */; };
+		13AF4A982E333C30004AC50F /* ModelPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13AF4A972E333C27004AC50F /* ModelPickerView.swift */; };
+		13AF4A9D2E342DB4004AC50F /* ChatManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13AF4A9C2E342DB1004AC50F /* ChatManager.swift */; };
+		13AF4A9F2E342ED2004AC50F /* ChatWorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13AF4A9E2E342ED2004AC50F /* ChatWorkspaceView.swift */; };
+		13AF4AA12E342EF0004AC50F /* ChatListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13AF4AA02E342EF0004AC50F /* ChatListView.swift */; };
+		13AF4AA42E342FA0004AC50F /* MessageRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13AF4AA32E342FA0004AC50F /* MessageRow.swift */; };
 		13B882522E2B7716006A0005 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B8824E2E2B7716006A0005 /* Assets.xcassets */; };
 		13B882542E2B7716006A0005 /* Q2_Edge_ChatApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B882502E2B7716006A0005 /* Q2_Edge_ChatApp.swift */; };
 		13B882552E2B7716006A0005 /* FrontPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B8824C2E2B7716006A0005 /* FrontPageView.swift */; };
+		13B882582E2C31D8006A0005 /* ModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B882572E2C31D3006A0005 /* ModelManager.swift */; };
+		21E506542E2D1DE200D26F61 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21E506532E2D1DE200D26F61 /* ContentView.swift */; };
+		21E506582E2D1FD200D26F61 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21E506572E2D1FD200D26F61 /* ChatView.swift */; };
+		21E5065C2E2D4E3F00D26F61 /* DynamicTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21E5065B2E2D4E3F00D26F61 /* DynamicTextEditor.swift */; };
+		21E506612E2D651D00D26F61 /* MessagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21E506602E2D651D00D26F61 /* MessagesView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -31,23 +46,28 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		1371CE5F2E34333400209092 /* ModelManifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManifest.swift; sourceTree = "<group>"; };
+		1371CE612E34547700209092 /* LlamaEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LlamaEngine.swift; sourceTree = "<group>"; };
 		139FBB3B2E2A1D35003EF52B /* Q2 Edge Chat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Q2 Edge Chat.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		139FBB482E2A1D37003EF52B /* Q2 Edge ChatTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Q2 Edge ChatTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		139FBB522E2A1D37003EF52B /* Q2 Edge ChatUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Q2 Edge ChatUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		13AF4A912E3336DF004AC50F /* BrowseModelsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowseModelsViewModel.swift; sourceTree = "<group>"; };
+		13AF4A932E333720004AC50F /* ModelBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelBrowserView.swift; sourceTree = "<group>"; };
+		13AF4A952E333AB0004AC50F /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
+		13AF4A972E333C27004AC50F /* ModelPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelPickerView.swift; sourceTree = "<group>"; };
+		13AF4A9C2E342DB1004AC50F /* ChatManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatManager.swift; sourceTree = "<group>"; };
+		13AF4A9E2E342ED2004AC50F /* ChatWorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatWorkspaceView.swift; sourceTree = "<group>"; };
+		13AF4AA02E342EF0004AC50F /* ChatListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatListView.swift; sourceTree = "<group>"; };
+		13AF4AA32E342FA0004AC50F /* MessageRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageRow.swift; sourceTree = "<group>"; };
 		13B8824C2E2B7716006A0005 /* FrontPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrontPageView.swift; sourceTree = "<group>"; };
 		13B8824E2E2B7716006A0005 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		13B882502E2B7716006A0005 /* Q2_Edge_ChatApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Q2_Edge_ChatApp.swift; sourceTree = "<group>"; };
+		13B882572E2C31D3006A0005 /* ModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManager.swift; sourceTree = "<group>"; };
+		21E506532E2D1DE200D26F61 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		21E506572E2D1FD200D26F61 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		21E5065B2E2D4E3F00D26F61 /* DynamicTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicTextEditor.swift; sourceTree = "<group>"; };
+		21E506602E2D651D00D26F61 /* MessagesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagesView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
-
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		139FBB752E2A25EA003EF52B /* Exceptions for "LlamaPackage" folder in "Q2 Edge Chat" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Package.swift,
-			);
-			target = 139FBB3A2E2A1D35003EF52B /* Q2 Edge Chat */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		139FBB4B2E2A1D37003EF52B /* Q2 Edge ChatTests */ = {
@@ -60,12 +80,9 @@
 			path = "Q2 Edge ChatUITests";
 			sourceTree = "<group>";
 		};
-		139FBB672E2A2281003EF52B /* LlamaPackage */ = {
+		21E5065D2E2D500800D26F61 /* Models */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				139FBB752E2A25EA003EF52B /* Exceptions for "LlamaPackage" folder in "Q2 Edge Chat" target */,
-			);
-			path = LlamaPackage;
+			path = Models;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -75,7 +92,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				139FBB6D2E2A24F2003EF52B /* LlamaFramework in Frameworks */,
+				133B3A962E34670900F108AD /* LLamaSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -100,9 +117,9 @@
 			isa = PBXGroup;
 			children = (
 				13B882512E2B7716006A0005 /* Q2 Edge Chat */,
-				139FBB672E2A2281003EF52B /* LlamaPackage */,
 				139FBB4B2E2A1D37003EF52B /* Q2 Edge ChatTests */,
 				139FBB552E2A1D37003EF52B /* Q2 Edge ChatUITests */,
+				21E506A62E2DBB1C00D26F61 /* Frameworks */,
 				139FBB3C2E2A1D35003EF52B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -117,10 +134,36 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		13AF4A902E3336D6004AC50F /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				13AF4A952E333AB0004AC50F /* ChatViewModel.swift */,
+				13AF4A912E3336DF004AC50F /* BrowseModelsViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		13AF4AA22E342F93004AC50F /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				13AF4AA32E342FA0004AC50F /* MessageRow.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
 		13B8824D2E2B7716006A0005 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				13AF4AA22E342F93004AC50F /* Components */,
+				13AF4AA02E342EF0004AC50F /* ChatListView.swift */,
+				13AF4A9E2E342ED2004AC50F /* ChatWorkspaceView.swift */,
+				13AF4A972E333C27004AC50F /* ModelPickerView.swift */,
+				13AF4A932E333720004AC50F /* ModelBrowserView.swift */,
+				21E506602E2D651D00D26F61 /* MessagesView.swift */,
+				21E506572E2D1FD200D26F61 /* ChatView.swift */,
+				21E506532E2D1DE200D26F61 /* ContentView.swift */,
 				13B8824C2E2B7716006A0005 /* FrontPageView.swift */,
+				21E5065B2E2D4E3F00D26F61 /* DynamicTextEditor.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -128,11 +171,32 @@
 		13B882512E2B7716006A0005 /* Q2 Edge Chat */ = {
 			isa = PBXGroup;
 			children = (
+				13AF4A902E3336D6004AC50F /* ViewModels */,
+				21E5065D2E2D500800D26F61 /* Models */,
+				13B882562E2C31C2006A0005 /* Services */,
 				13B8824D2E2B7716006A0005 /* Views */,
 				13B8824E2E2B7716006A0005 /* Assets.xcassets */,
 				13B882502E2B7716006A0005 /* Q2_Edge_ChatApp.swift */,
 			);
 			path = "Q2 Edge Chat";
+			sourceTree = "<group>";
+		};
+		13B882562E2C31C2006A0005 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				1371CE612E34547700209092 /* LlamaEngine.swift */,
+				1371CE5F2E34333400209092 /* ModelManifest.swift */,
+				13AF4A9C2E342DB1004AC50F /* ChatManager.swift */,
+				13B882572E2C31D3006A0005 /* ModelManager.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		21E506A62E2DBB1C00D26F61 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -151,11 +215,11 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				139FBB672E2A2281003EF52B /* LlamaPackage */,
+				21E5065D2E2D500800D26F61 /* Models */,
 			);
 			name = "Q2 Edge Chat";
 			packageProductDependencies = (
-				139FBB6C2E2A24F2003EF52B /* LlamaFramework */,
+				133B3A952E34670900F108AD /* LLamaSwift */,
 			);
 			productName = "Q2 Edge Chat";
 			productReference = 139FBB3B2E2A1D35003EF52B /* Q2 Edge Chat.app */;
@@ -240,7 +304,7 @@
 			mainGroup = 139FBB322E2A1D35003EF52B;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				139FBB6B2E2A24F2003EF52B /* XCLocalSwiftPackageReference "LlamaPackage" */,
+				133B3A942E34670900F108AD /* XCRemoteSwiftPackageReference "llama-cpp-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 139FBB3C2E2A1D35003EF52B /* Products */;
@@ -284,8 +348,23 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				13AF4A9D2E342DB4004AC50F /* ChatManager.swift in Sources */,
+				13AF4A922E3336EA004AC50F /* BrowseModelsViewModel.swift in Sources */,
+				13AF4AA42E342FA0004AC50F /* MessageRow.swift in Sources */,
+				21E5065C2E2D4E3F00D26F61 /* DynamicTextEditor.swift in Sources */,
+				21E506582E2D1FD200D26F61 /* ChatView.swift in Sources */,
+				21E506612E2D651D00D26F61 /* MessagesView.swift in Sources */,
+				13AF4A942E333729004AC50F /* ModelBrowserView.swift in Sources */,
 				13B882542E2B7716006A0005 /* Q2_Edge_ChatApp.swift in Sources */,
+				21E506542E2D1DE200D26F61 /* ContentView.swift in Sources */,
+				13AF4A982E333C30004AC50F /* ModelPickerView.swift in Sources */,
 				13B882552E2B7716006A0005 /* FrontPageView.swift in Sources */,
+				13AF4A9F2E342ED2004AC50F /* ChatWorkspaceView.swift in Sources */,
+				1371CE602E34333600209092 /* ModelManifest.swift in Sources */,
+				13AF4A962E333AB5004AC50F /* ChatViewModel.swift in Sources */,
+				1371CE6C2E345FF700209092 /* LlamaEngine.swift in Sources */,
+				13B882582E2C31D8006A0005 /* ModelManager.swift in Sources */,
+				13AF4AA12E342EF0004AC50F /* ChatListView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -445,14 +524,17 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = FS8K8H33HP;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Q2 Edge Chat";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -473,14 +555,17 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = FS8K8H33HP;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Q2 Edge Chat";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -603,17 +688,22 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		139FBB6B2E2A24F2003EF52B /* XCLocalSwiftPackageReference "LlamaPackage" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = LlamaPackage;
+/* Begin XCRemoteSwiftPackageReference section */
+		133B3A942E34670900F108AD /* XCRemoteSwiftPackageReference "llama-cpp-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Q2-Development/llama-cpp-swift";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
 		};
-/* End XCLocalSwiftPackageReference section */
+/* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		139FBB6C2E2A24F2003EF52B /* LlamaFramework */ = {
+		133B3A952E34670900F108AD /* LLamaSwift */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = LlamaFramework;
+			package = 133B3A942E34670900F108AD /* XCRemoteSwiftPackageReference "llama-cpp-swift" */;
+			productName = LLamaSwift;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

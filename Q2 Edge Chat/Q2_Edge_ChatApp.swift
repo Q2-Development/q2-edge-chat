@@ -11,7 +11,7 @@ import SwiftUI
 struct Q2_Edge_ChatApp: App {
     var body: some Scene {
         WindowGroup {
-            FrontPageView()
+            ContentView()
         }
     }
 }
