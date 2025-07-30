@@ -61,16 +61,23 @@ struct MessageRow: View {
 
     @ViewBuilder
     private func bubble(color: Color, textColor: Color, alignment: HorizontalAlignment) -> some View {
-        Text(message.text)
-            .font(.body)
-            .foregroundColor(textColor)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(color)
-                    .shadow(color: .black.opacity(0.05), radius: 1, x: 0, y: 1)
-            )
-            .frame(maxWidth: .infinity, alignment: alignment == .leading ? .leading : .trailing)
+        VStack(alignment: alignment, spacing: 0) {
+            if message.speaker == .assistant {
+                MarkdownText(markdown: message.text)
+                    .foregroundColor(textColor)
+            } else {
+                Text(message.text)
+                    .font(.body)
+                    .foregroundColor(textColor)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(color)
+                .shadow(color: .black.opacity(0.05), radius: 1, x: 0, y: 1)
+        )
+        .frame(maxWidth: .infinity, alignment: alignment == .leading ? .leading : .trailing)
     }
 }

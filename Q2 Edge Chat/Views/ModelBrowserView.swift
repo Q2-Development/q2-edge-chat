@@ -173,7 +173,7 @@ struct StaffPickCard: View {
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
                         .onTapGesture {
-                            // Prevent the card tap from firing
+                            
                         }
                         Spacer()
                     }
@@ -237,6 +237,7 @@ struct ModelDetailView: View {
                     }
                 }
                 .padding(.horizontal)
+                .padding(.top, 8)
                 
                 VStack(alignment: .leading, spacing: 20) {
                     // Header
@@ -331,9 +332,7 @@ struct ModelDetailView: View {
                             Text("Model Card")
                                 .font(.headline)
                             
-                            Text(readme)
-                                .font(.body)
-                                .lineLimit(nil)
+                            MarkdownText(markdown: readme)
                         }
                     }
                     
