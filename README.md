@@ -111,15 +111,17 @@ We welcome contributions! Please feel free to submit issues and pull requests.
 
 ## Screenshots
 
-![Main Screen](readme_images/main.png)
-
-![Browse Models](readme_images/browse_models.png)
-
-![Chat Window](readme_images/chat_window.png)
-
-![Search Models](readme_images/search_models.png)
-
-![Sidebar](readme_images/sidebar.png)
+<p align="center">
+  <img src="readme_images/main.png" alt="Main Screen" width="45%"/>
+  <img src="readme_images/browse_models.png" alt="Browse Models" width="45%"/>
+</p>
+<p align="center">
+  <img src="readme_images/chat_window.png" alt="Chat Window" width="45%"/>
+  <img src="readme_images/search_models.png" alt="Search Models" width="45%"/>
+</p>
+<p align="center">
+  <img src="readme_images/sidebar.png" alt="Sidebar" width="45%"/>
+</p>
 
 ## License
 
