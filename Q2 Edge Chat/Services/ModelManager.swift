@@ -5,6 +5,105 @@ struct HFSibling: Codable {
     let rfilename: String
 }
 
+struct ModelDetail {
+    let model: HFModel
+    let readme: String?
+    let hasGGUF: Bool
+    let ggufFiles: [HFSibling]
+}
+
+struct StaffPickModel {
+    let huggingFaceId: String
+    let displayName: String
+    let description: String
+    let parameterCount: String
+    let specialty: String
+    let category: String
+    
+    static let staffPicks: [StaffPickModel] = [
+        StaffPickModel(
+            huggingFaceId: "microsoft/Phi-3-mini-4k-instruct-gguf",
+            displayName: "Phi-3 Mini",
+            description: "Microsoft's excellent small model with strong reasoning capabilities",
+            parameterCount: "3.8B",
+            specialty: "General Chat",
+            category: "General"
+        ),
+        StaffPickModel(
+            huggingFaceId: "Qwen/Qwen2-1.5B-Instruct-GGUF",
+            displayName: "Qwen2 1.5B",
+            description: "Efficient multilingual model with great performance-to-size ratio",
+            parameterCount: "1.5B",
+            specialty: "Multilingual",
+            category: "General"
+        ),
+        StaffPickModel(
+            huggingFaceId: "PY007/TinyLlama-1.1B-Chat-v0.3-gguf",
+            displayName: "TinyLlama",
+            description: "Ultra-small model perfect for testing and resource-constrained environments",
+            parameterCount: "1.1B",
+            specialty: "Lightweight",
+            category: "General"
+        ),
+        StaffPickModel(
+            huggingFaceId: "google/gemma-2b-it-gguf",
+            displayName: "Gemma 2B",
+            description: "Google's efficient instruction-tuned model with strong safety features",
+            parameterCount: "2B",
+            specialty: "Safe AI",
+            category: "General"
+        ),
+        StaffPickModel(
+            huggingFaceId: "bartowski/Llama-3.2-1B-Instruct-GGUF",
+            displayName: "Llama 3.2 1B",
+            description: "Meta's latest small model with excellent instruction following",
+            parameterCount: "1B",
+            specialty: "Instruction Following",
+            category: "General"
+        ),
+        StaffPickModel(
+            huggingFaceId: "HuggingFaceTB/SmolLM-1.7B-Instruct-GGUF",
+            displayName: "SmolLM 1.7B",
+            description: "Highly optimized small model with impressive capabilities",
+            parameterCount: "1.7B",
+            specialty: "Optimized",
+            category: "General"
+        ),
+        StaffPickModel(
+            huggingFaceId: "stabilityai/stablelm-2-1_6b-chat-gguf",
+            displayName: "StableLM 2",
+            description: "Stability AI's chat-optimized model with balanced performance",
+            parameterCount: "1.6B",
+            specialty: "Chat",
+            category: "General"
+        ),
+        StaffPickModel(
+            huggingFaceId: "bartowski/CodeGemma-2b-GGUF",
+            displayName: "CodeGemma 2B",
+            description: "Google's coding-focused model for programming assistance",
+            parameterCount: "2B",
+            specialty: "Code Generation",
+            category: "Coding"
+        ),
+        StaffPickModel(
+            huggingFaceId: "microsoft/Phi-3.5-mini-instruct-gguf",
+            displayName: "Phi-3.5 Mini",
+            description: "Microsoft's updated reasoning model with enhanced capabilities",
+            parameterCount: "3.8B",
+            specialty: "Reasoning",
+            category: "General"
+        ),
+        StaffPickModel(
+            huggingFaceId: "Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF",
+            displayName: "Qwen2.5 Coder",
+            description: "Latest Qwen model specialized for coding tasks",
+            parameterCount: "1.5B",
+            specialty: "Code Generation",
+            category: "Coding"
+        )
+    ]
+}
+
 struct HFModel: Codable {
     let _id: String?
     let id: String
@@ -63,8 +162,13 @@ struct HFModel: Codable {
 
 actor ModelManager {
     private let pageSize = 20
-    func fetchModels() async throws -> [HFModel] {
-        guard let url = URL(string: "https://huggingface.co/api/models?full=true&limit=\(pageSize)") else {
+    func fetchModels(search: String? = nil) async throws -> [HFModel] {
+        var urlString = "https://huggingface.co/api/models?full=true&limit=\(pageSize)"
+        if let search = search {
+            urlString += "&search=\(search.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+        }
+        
+        guard let url = URL(string: urlString) else {
             throw ModelManagerError.networkError("Invalid API URL")
         }
         let (data, _) = try await URLSession.shared.data(from: url)
@@ -106,6 +210,49 @@ actor ModelManager {
         let (data, _) = try await URLSession.shared.data(from: url)
         
         return try JSONDecoder().decode(HFModel.self, from: data)
+    }
+    
+    func searchModels(query: String) async throws -> [HFModel] {
+        let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        guard let url = URL(string: "https://huggingface.co/api/models?search=\(encodedQuery)&full=true&limit=20") else {
+            throw ModelManagerError.networkError("Invalid search URL")
+        }
+        
+        let (data, _) = try await URLSession.shared.data(from: url)
+        return try JSONDecoder().decode([HFModel].self, from: data)
+    }
+    
+    func fetchModelREADME(modelId: String) async throws -> String {
+        let encodedModelId = modelId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ""
+        guard let url = URL(string: "https://huggingface.co/\(encodedModelId)/raw/main/README.md") else {
+            throw ModelManagerError.networkError("Invalid README URL")
+        }
+        
+        let (data, response) = try await URLSession.shared.data(from: url)
+        
+        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 404 {
+            return "" // No README available
+        }
+        
+        return String(data: data, encoding: .utf8) ?? ""
+    }
+    
+    func checkGGUFFiles(model: HFModel) -> (hasGGUF: Bool, ggufFiles: [HFSibling]) {
+        let ggufFiles = model.siblings.filter { $0.rfilename.hasSuffix(".gguf") }
+        return (hasGGUF: !ggufFiles.isEmpty, ggufFiles: ggufFiles)
+    }
+    
+    func fetchModelDetail(modelId: String) async throws -> ModelDetail {
+        let model = try await fetchModelInfo(modelID: modelId)
+        let readme = try? await fetchModelREADME(modelId: modelId)
+        let ggufInfo = checkGGUFFiles(model: model)
+        
+        return ModelDetail(
+            model: model,
+            readme: readme,
+            hasGGUF: ggufInfo.hasGGUF,
+            ggufFiles: ggufInfo.ggufFiles
+        )
     }
 
     func buildLocalModelURL(modelID: String, filename: String) throws -> URL {

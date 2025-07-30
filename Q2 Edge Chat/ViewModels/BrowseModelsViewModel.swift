@@ -4,14 +4,24 @@ import Combine
 
 @MainActor
 class BrowseModelsViewModel: ObservableObject {
-    @Published var remoteModels: [HFModel] = []
     @Published var localEntries: [ManifestEntry] = []
-    @Published var isLoadingRemote = false
     @Published var downloadingModels: Set<String> = []
     @Published var errorMessage: String?
     
+    // Search functionality
+    @Published var searchText = ""
+    @Published var searchResults: [HFModel] = []
+    @Published var isSearching = false
+    
+    // Staff picks
+    @Published var staffPicks = StaffPickModel.staffPicks
+    
+    // Model detail sheet
+    @Published var selectedModelDetail: ModelDetail?
+    @Published var showingModelDetail = false
+    
     private var cancellables = Set<AnyCancellable>()
-    private let manager = ModelManager()
+    let manager = ModelManager()
     private let store: ManifestStore
     
     init() {
@@ -20,6 +30,15 @@ class BrowseModelsViewModel: ObservableObject {
             store.didChange
                 .receive(on: RunLoop.main)
                 .sink { [weak self] _ in Task { await self?.loadLocal() } }
+                .store(in: &cancellables)
+            
+            // Setup search debouncing
+            $searchText
+                .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
+                .removeDuplicates()
+                .sink { [weak self] searchText in
+                    Task { await self?.performSearch(query: searchText) }
+                }
                 .store(in: &cancellables)
         } catch {
             fatalError("Failed to initialize ManifestStore: \(error.localizedDescription). Please ensure the app has proper file system permissions.")
@@ -30,14 +49,42 @@ class BrowseModelsViewModel: ObservableObject {
         localEntries = await store.all()
     }
 
-    func loadRemote() async {
-        isLoadingRemote = true
-        defer { isLoadingRemote = false }
+    func performSearch(query: String) async {
+        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            searchResults = []
+            return
+        }
+        
+        isSearching = true
+        defer { isSearching = false }
         errorMessage = nil
+        
         do {
-            remoteModels = try await manager.fetchModels()
+            searchResults = try await manager.searchModels(query: query)
         } catch {
             errorMessage = error.localizedDescription
+            searchResults = []
+        }
+    }
+    
+    func clearSearch() {
+        searchText = ""
+        searchResults = []
+    }
+    
+    func fetchModelDetail(modelId: String) async {
+        do {
+            selectedModelDetail = try await manager.fetchModelDetail(modelId: modelId)
+            showingModelDetail = true
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    func downloadStaffPick(_ staffPick: StaffPickModel) async {
+        await fetchModelDetail(modelId: staffPick.huggingFaceId)
+        if let modelDetail = selectedModelDetail, modelDetail.hasGGUF {
+            await download(modelDetail.model)
         }
     }
 
@@ -91,6 +138,14 @@ class BrowseModelsViewModel: ObservableObject {
     
     func isDownloaded(_ model: HFModel) -> Bool {
         return localEntries.contains(where: { $0.id == model.id })
+    }
+    
+    func isStaffPickDownloaded(_ staffPick: StaffPickModel) -> Bool {
+        return localEntries.contains(where: { $0.id == staffPick.huggingFaceId })
+    }
+    
+    func isStaffPickDownloading(_ staffPick: StaffPickModel) -> Bool {
+        return downloadingModels.contains(staffPick.huggingFaceId)
     }
 
     func delete(_ entry: ManifestEntry) async {
