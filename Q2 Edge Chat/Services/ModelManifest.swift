@@ -74,9 +74,50 @@ struct ManifestEntry: Codable, Identifiable {
                 ))
             }
         } else if urlString.hasPrefix("/") {
-            // Already absolute path
-            localURL = URL(fileURLWithPath: urlString)
-            print("🔍 MANIFEST DEBUG: Using absolute path: \(localURL.path)")
+            // Absolute path - check if it exists or needs migration
+            let originalPath = urlString
+            print("🔍 MANIFEST DEBUG: Original absolute path: \(originalPath)")
+            
+            if FileManager.default.fileExists(atPath: originalPath) {
+                localURL = URL(fileURLWithPath: originalPath)
+                print("🔍 MANIFEST DEBUG: Using existing absolute path: \(localURL.path)")
+            } else {
+                // File doesn't exist at old path - try to find it in current container
+                print("🔍 MANIFEST DEBUG: File not found at old absolute path, attempting migration...")
+                
+                // Extract the relative path from the old absolute path
+                if let libraryRange = originalPath.range(of: "/Library/") {
+                    let relativePath = String(originalPath[libraryRange.upperBound...])
+                    print("🔍 MANIFEST DEBUG: Extracted relative path: \(relativePath)")
+                    
+                    guard let currentLibraryURL = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first else {
+                        throw DecodingError.dataCorrupted(DecodingError.Context(
+                            codingPath: decoder.codingPath,
+                            debugDescription: "Unable to access current library directory"
+                        ))
+                    }
+                    
+                    let newURL = currentLibraryURL.appendingPathComponent(relativePath)
+                    print("🔍 MANIFEST DEBUG: Trying new path: \(newURL.path)")
+                    
+                    if FileManager.default.fileExists(atPath: newURL.path) {
+                        localURL = newURL
+                        print("✅ MANIFEST DEBUG: Successfully migrated to: \(localURL.path)")
+                    } else {
+                        // Try to find the model file in any simulator container
+                        if let foundPath = Self.findModelInSimulator(filename: URL(fileURLWithPath: originalPath).lastPathComponent) {
+                            localURL = foundPath
+                            print("✅ MANIFEST DEBUG: Found model in different container: \(localURL.path)")
+                        } else {
+                            print("❌ MANIFEST DEBUG: File not found anywhere")
+                            localURL = URL(fileURLWithPath: originalPath) // Keep original for error reporting
+                        }
+                    }
+                } else {
+                    print("❌ MANIFEST DEBUG: Could not extract relative path from: \(originalPath)")
+                    localURL = URL(fileURLWithPath: originalPath) // Keep original
+                }
+            }
         } else {
             // Relative path - convert to absolute using Library directory
             guard let libraryURL = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first else {
@@ -97,6 +138,48 @@ struct ManifestEntry: Codable, Identifiable {
         try container.encode(downloadedAt, forKey: .downloadedAt)
         // Always store absolute path
         try container.encode(localURL.path, forKey: .localURL)
+    }
+    
+    private static func findModelInSimulator(filename: String) -> URL? {
+        let simulatorBasePaths = [
+            "/Users/michaelgathara/Library/Developer/CoreSimulator/Devices",
+            "/Users/michaelgathara/Library/Developer/Xcode/UserData/Previews/Simulator Devices"
+        ]
+        
+        for basePath in simulatorBasePaths {
+            do {
+                let deviceDirs = try FileManager.default.contentsOfDirectory(atPath: basePath)
+                for deviceID in deviceDirs {
+                    let appsPath = "\(basePath)/\(deviceID)/data/Containers/Data/Application"
+                    if FileManager.default.fileExists(atPath: appsPath) {
+                        let appDirs = try FileManager.default.contentsOfDirectory(atPath: appsPath)
+                        for appID in appDirs {
+                            let modelsPath = "\(appsPath)/\(appID)/Library/Models"
+                            if let foundURL = Self.searchForModel(in: modelsPath, filename: filename) {
+                                return foundURL
+                            }
+                        }
+                    }
+                }
+            } catch {
+                continue
+            }
+        }
+        return nil
+    }
+    
+    private static func searchForModel(in directory: String, filename: String) -> URL? {
+        guard let enumerator = FileManager.default.enumerator(atPath: directory) else { return nil }
+        
+        while let file = enumerator.nextObject() as? String {
+            if file.hasSuffix(filename) {
+                let fullPath = "\(directory)/\(file)"
+                if FileManager.default.fileExists(atPath: fullPath) {
+                    return URL(fileURLWithPath: fullPath)
+                }
+            }
+        }
+        return nil
     }
 }
 
