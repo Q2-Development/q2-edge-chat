@@ -130,56 +130,11 @@ final class ChatManager: ObservableObject {
             evictOldestEngine()
         }
 
-        // Handle iOS Simulator container path changes
-        let fullURL: URL
-        if url.isFileURL && url.path.hasPrefix("/") {
-            // URL is already an absolute path - check if it exists
-            if FileManager.default.fileExists(atPath: url.path) {
-                fullURL = url
-                print("🔍 DEBUG: Using existing absolute path: \(fullURL.path)")
-            } else {
-                // Absolute path doesn't exist, try to find the model file
-                let filename = url.lastPathComponent
-                if let foundURL = findActualModelFile(relativePath: "Models/\(filename)") {
-                    fullURL = foundURL
-                    print("🔍 DEBUG: Found model at new location: \(fullURL.path)")
-                } else {
-                    // Fallback to original path for error reporting
-                    fullURL = url
-                    print("❌ DEBUG: Model not found, using original path for error: \(fullURL.path)")
-                }
-            }
-        } else {
-            // URL is relative - try to find the actual file
-            if let foundURL = findActualModelFile(relativePath: url.path) {
-                fullURL = foundURL
-                print("🔍 DEBUG: Found model at: \(fullURL.path)")
-            } else {
-                // Construct full path as fallback
-                fullURL = try FileManager.default.url(
-                    for: .libraryDirectory,
-                    in: .userDomainMask,
-                    appropriateFor: nil,
-                    create: false
-                ).appendingPathComponent(url.path)
-                print("🔍 DEBUG: Constructed fallback path: \(fullURL.path)")
-            }
-        }
-        
-        // Add debug logging
-        print("🔍 DEBUG: Attempting to load model from: \(fullURL.path)")
-        print("🔍 DEBUG: File exists: \(FileManager.default.fileExists(atPath: fullURL.path))")
-        
-        // List parent directory contents for debugging
-        let parentDir = fullURL.deletingLastPathComponent()
-        do {
-            let contents = try FileManager.default.contentsOfDirectory(atPath: parentDir.path)
-            print("🔍 DEBUG: Parent directory contents: \(contents)")
-        } catch {
-            print("🔍 DEBUG: Cannot list parent directory: \(error)")
-        }
+        // Debug logging
+        print("🔍 DEBUG: Attempting to load model from: \(url.path)")
+        print("🔍 DEBUG: File exists: \(FileManager.default.fileExists(atPath: url.path))")
 
-        let e = try LlamaEngine(modelURL: fullURL)
+        let e = try LlamaEngine(modelURL: url)
         engines[url] = e
         engineLastUsed[url] = Date()
         return e

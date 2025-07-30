@@ -22,6 +22,10 @@ struct ManagedTextView: UIViewRepresentable {
         view.font = UIFont.preferredFont(forTextStyle: .body)
         view.adjustsFontForContentSizeCategory = true
         view.backgroundColor = .clear
+        view.textAlignment = .left
+        view.textContainerInset = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
+        view.contentInsetAdjustmentBehavior = .never
+        view.isScrollEnabled = false
         return view
     }
  
@@ -56,13 +60,13 @@ struct DynamicTextEditor: View {
     @Environment(\.verticalSizeClass) private var verticalSize
     @Binding var text: String
     
-    private let minHeight: CGFloat = UIFont.preferredFont(forTextStyle: .body).pointSize
+    private let minHeight: CGFloat = UIFont.preferredFont(forTextStyle: .body).lineHeight + 4
     @State private var currentHeight: CGFloat?
     let maxHeight: CGFloat?
     let maxHeightCompact: CGFloat?
     let placeholder: String?
     
-    private let placeholderPadding: CGFloat = 4
+    private let placeholderPadding: CGFloat = 0
     
     init(text: Binding<String>, placeholder: String? = nil, maxHeight: CGFloat? = nil, maxHeightCompact: CGFloat? = nil) {
         self._text = text
@@ -74,11 +78,20 @@ struct DynamicTextEditor: View {
     var body: some View {
         ManagedTextView(text: $text, textDidChange: textDidChange(_:))
             .frame(height: frameHeight)
-            .background(Text(placeholder ?? "")
-                .foregroundColor(placeholder?.isEmpty ?? true ? Color.secondary.opacity(0.5) : Color.secondary)
-            .opacity(text.count == 0 ? 1.0 : 0)
-            .padding(.leading, placeholderPadding),
-                        alignment: .leading)
+            .background(
+                HStack {
+                    VStack {
+                        HStack {
+                            Text(placeholder ?? "Type a message...")
+                                .foregroundColor(Color.secondary.opacity(0.6))
+                                .padding(.leading, placeholderPadding)
+                            Spacer()
+                        }
+                        Spacer()
+                    }
+                    .opacity(text.count == 0 ? 1.0 : 0)
+                }
+            )
     }
     
     private var frameHeight: CGFloat {
