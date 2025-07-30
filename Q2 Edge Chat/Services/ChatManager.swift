@@ -75,7 +75,20 @@ final class ChatManager: ObservableObject {
             return
         }
         
-        print("🔍 CHAT DEBUG: Found model entry: \(entry.id) at \(entry.localURL.path)")
+        print("🔍 CHAT DEBUG: Found model entry: \(entry.id)")
+        print("🔍 CHAT DEBUG: Model localURL: \(entry.localURL)")
+        print("🔍 CHAT DEBUG: Model path: \(entry.localURL.path)")
+        print("🔍 CHAT DEBUG: File exists at path: \(FileManager.default.fileExists(atPath: entry.localURL.path))")
+        
+        // Try to get file attributes for more debugging
+        do {
+            let attributes = try FileManager.default.attributesOfItem(atPath: entry.localURL.path)
+            if let fileSize = attributes[.size] as? Int64 {
+                print("🔍 CHAT DEBUG: File size: \(fileSize) bytes (\(fileSize / 1_048_576) MB)")
+            }
+        } catch {
+            print("❌ CHAT DEBUG: Could not get file attributes: \(error)")
+        }
 
         // Generate response directly without wrapping in Task that swallows errors
         do {
@@ -193,81 +206,6 @@ final class ChatManager: ObservableObject {
         }
     }
     
-    private func findActualModelFile(relativePath: String) -> URL? {
-        let fm = FileManager.default
-        
-        // Try current app's Library directory first
-        do {
-            let libraryURL = try fm.url(for: .libraryDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
-            let fullPath = libraryURL.appendingPathComponent(relativePath)
-            if fm.fileExists(atPath: fullPath.path) {
-                print("🔍 MANIFEST DEBUG: Found model at current path: \(fullPath.path)")
-                return fullPath
-            }
-        } catch {
-            print("❌ MANIFEST DEBUG: Could not get library directory: \(error)")
-        }
-        
-        // Search for the file in other simulator containers
-        let sanitizedModelName = URL(fileURLWithPath: relativePath).lastPathComponent
-        print("🔍 MANIFEST DEBUG: Searching for model file: \(sanitizedModelName)")
-        
-        if let foundPath = findModelFileInSimulator(filename: sanitizedModelName) {
-            print("✅ MANIFEST DEBUG: Found model in simulator at: \(foundPath.path)")
-            return foundPath
-        }
-        
-        print("❌ MANIFEST DEBUG: Model file not found anywhere: \(relativePath)")
-        return nil
-    }
-    
-    private func findModelFileInSimulator(filename: String) -> URL? {
-        let simulatorPath = "/Users/michaelgathara/Library/Developer/CoreSimulator/Devices"
-        let previewPath = "/Users/michaelgathara/Library/Developer/Xcode/UserData/Previews/Simulator Devices"
-        
-        for basePath in [simulatorPath, previewPath] {
-            do {
-                let contents = try FileManager.default.contentsOfDirectory(atPath: basePath)
-                for deviceID in contents {
-                    let searchPath = "\(basePath)/\(deviceID)/data/Containers/Data/Application"
-                    if FileManager.default.fileExists(atPath: searchPath) {
-                        let appContents = try FileManager.default.contentsOfDirectory(atPath: searchPath)
-                        for appID in appContents {
-                            let modelPath = "\(searchPath)/\(appID)/Library/Models"
-                            let fullModelPath = "\(modelPath)/\(filename)"
-                            if FileManager.default.fileExists(atPath: fullModelPath) {
-                                return URL(fileURLWithPath: fullModelPath)
-                            }
-                            
-                            // Also search in subdirectories
-                            if FileManager.default.fileExists(atPath: modelPath) {
-                                if let found = searchForModelFile(in: modelPath, filename: filename) {
-                                    return found
-                                }
-                            }
-                        }
-                    }
-                }
-            } catch {
-                continue
-            }
-        }
-        return nil
-    }
-    
-    private func searchForModelFile(in directory: String, filename: String) -> URL? {
-        guard let enumerator = FileManager.default.enumerator(atPath: directory) else { return nil }
-        
-        while let file = enumerator.nextObject() as? String {
-            if file.hasSuffix(filename) || file.hasSuffix(".gguf") || file.hasSuffix(".bin") {
-                let fullPath = "\(directory)/\(file)"
-                if FileManager.default.fileExists(atPath: fullPath) {
-                    return URL(fileURLWithPath: fullPath)
-                }
-            }
-        }
-        return nil
-    }
 
     var activeIndex: Int? { sessions.firstIndex { $0.id == activeID } }
 }
