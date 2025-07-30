@@ -304,15 +304,7 @@ actor ModelManager {
         
         try fm.moveItem(at: tempURL, to: destURL)
         
-        // Return relative path from Library directory to avoid simulator container issues
-        let libraryURL = try FileManager.default.url(
-            for: .libraryDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: false
-        )
-        
-        let relativePath = destURL.path.replacingOccurrences(of: libraryURL.path + "/", with: "")
-        return URL(fileURLWithPath: relativePath)
+        // Return the absolute path to the downloaded file
+        return destURL
     }
 }

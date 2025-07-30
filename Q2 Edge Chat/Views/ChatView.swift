@@ -13,39 +13,77 @@ struct ChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // Chat Messages Area
             MessagesView(messages: session.messages)
+                .background(Color(.systemGroupedBackground))
 
-            Divider()
-
-            HStack {
-                DynamicTextEditor(text: $vm.inputText)
-                    .frame(minHeight: 40, maxHeight: 120)
-
-                Button("Send") { Task { await vm.send() } }
+            // Input Area
+            VStack(spacing: 0) {
+                Divider()
+                
+                HStack(alignment: .bottom, spacing: 12) {
+                    // Text Input
+                    DynamicTextEditor(text: $vm.inputText)
+                        .frame(minHeight: 10, maxHeight: 80)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 4)
+                        .background(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(Color(.systemGray6))
+                                .stroke(Color(.systemGray4), lineWidth: 0.5)
+                        )
+                    
+                    // Send Button
+                    Button(action: {
+                        Task { await vm.send() }
+                    }) {
+                        Image(systemName: vm.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "arrow.up.circle" : "arrow.up.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(vm.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .secondary : .accentColor)
+                    }
                     .disabled(vm.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .animation(.easeInOut(duration: 0.1), value: vm.inputText.isEmpty)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color(.systemBackground))
             }
-            .padding(.horizontal)
-            .padding(.bottom, 4)
         }
-        .navigationTitle(session.title)
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
-                    withAnimation { manager.isSidebarHidden.toggle() }
+                    withAnimation(.easeInOut(duration: 0.2)) { 
+                        manager.isSidebarHidden.toggle() 
+                    }
                 } label: {
-                    Image(systemName: "line.3.horizontal")
+                    Image(systemName: "sidebar.left")
+                        .font(.title3)
                 }
                 .buttonStyle(.plain)
+                .padding(.top, 25)
             }
 
             ToolbarItem(placement: .principal) {
                 ModelPickerView(selection: $session.modelID)
+                    .padding(.top, 25)
             }
 
             ToolbarItem(placement: .navigationBarTrailing) {
-                Image(systemName: "gearshape")
+                Menu {
+                    Button("Clear Chat") {
+                        session.messages.removeAll()
+                    }
+                    Button("Export Chat") {
+                        // Export functionality
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.title3)
+                }
+                .padding(.top, 25)
             }
         }
     }
