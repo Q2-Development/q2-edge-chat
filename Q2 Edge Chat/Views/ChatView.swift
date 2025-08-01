@@ -5,6 +5,7 @@ struct ChatView: View {
     @Binding var session: ChatSession
     @StateObject private var vm: ChatViewModel
     @State private var showingSettings = false
+    @State private var showingExport = false
 
     init(manager: ChatManager, session: Binding<ChatSession>) {
         self.manager = manager
@@ -81,7 +82,7 @@ struct ChatView: View {
                         session.messages.removeAll()
                     }
                     Button("Export Chat") {
-                        
+                        showingExport = true
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -92,6 +93,9 @@ struct ChatView: View {
         }
         .sheet(isPresented: $showingSettings) {
             ModelSettingsView(settings: $session.modelSettings)
+        }
+        .sheet(isPresented: $showingExport) {
+            ExportChatView(session: session)
         }
     }
 }
