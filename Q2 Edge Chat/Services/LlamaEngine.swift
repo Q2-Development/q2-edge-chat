@@ -98,14 +98,14 @@ final class LlamaEngine {
     }
 
     func generate(prompt: String,
-                  maxTokens: Int32 = 120,
+                  settings: ModelSettings = .default,
                   tokenHandler: @escaping (String) -> Void) async throws {
         // Validate input parameters
         guard !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw LlamaEngineError.generationError("Prompt cannot be empty")
         }
         
-        guard maxTokens > 0 && maxTokens <= 4096 else {
+        guard settings.maxTokens > 0 && settings.maxTokens <= 4096 else {
             throw LlamaEngineError.generationError("Max tokens must be between 1 and 4096")
         }
         
@@ -114,9 +114,11 @@ final class LlamaEngine {
             throw LlamaEngineError.generationError("Prompt too long (max 50,000 characters)")
         }
         
+        let finalPrompt = settings.systemPrompt.isEmpty ? prompt : "\(settings.systemPrompt)\n\n\(prompt)"
+        
         do {
-            for try await token in await llama.infer(prompt: prompt,
-                                                     maxTokens: maxTokens) {
+            for try await token in await llama.infer(prompt: finalPrompt,
+                                                     maxTokens: settings.maxTokens) {
                 try Task.checkCancellation()
                 tokenHandler(token)
             }
