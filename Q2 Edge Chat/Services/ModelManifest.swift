@@ -21,29 +21,20 @@ struct ManifestEntry: Codable, Identifiable {
         id = try container.decode(String.self, forKey: .id)
         downloadedAt = try container.decode(Date.self, forKey: .downloadedAt)
         
-        // Handle different URL string formats
         let urlString = try container.decode(String.self, forKey: .localURL)
-        print("🔍 MANIFEST DEBUG: Decoding URL string: '\(urlString)'")
         
         if urlString.hasPrefix("file://") {
             // Full file URL - check if it's an old container path
             if let url = URL(string: urlString) {
                 let originalPath = url.path
-                print("🔍 MANIFEST DEBUG: Original file URL path: \(originalPath)")
-                
-                // Check if the file exists at the original location
                 if FileManager.default.fileExists(atPath: originalPath) {
                     localURL = url
-                    print("🔍 MANIFEST DEBUG: Using existing file URL: \(localURL.path)")
                 } else {
                     // File doesn't exist at old path - try to find it in current container
-                    print("🔍 MANIFEST DEBUG: File not found at old path, attempting migration...")
-                    
                     // Extract the relative path from the old absolute path
                     // Example: /var/mobile/.../Library/Models/... -> Models/...
                     if let libraryRange = originalPath.range(of: "/Library/") {
                         let relativePath = String(originalPath[libraryRange.upperBound...])
-                        print("🔍 MANIFEST DEBUG: Extracted relative path: \(relativePath)")
                         
                         guard let currentLibraryURL = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first else {
                             throw DecodingError.dataCorrupted(DecodingError.Context(
@@ -53,17 +44,13 @@ struct ManifestEntry: Codable, Identifiable {
                         }
                         
                         let newURL = currentLibraryURL.appendingPathComponent(relativePath)
-                        print("🔍 MANIFEST DEBUG: Trying new path: \(newURL.path)")
                         
                         if FileManager.default.fileExists(atPath: newURL.path) {
                             localURL = newURL
-                            print("✅ MANIFEST DEBUG: Successfully migrated to: \(localURL.path)")
                         } else {
-                            print("❌ MANIFEST DEBUG: File not found at new path either")
                             localURL = url // Keep original URL for error reporting
                         }
                     } else {
-                        print("❌ MANIFEST DEBUG: Could not extract relative path from: \(originalPath)")
                         localURL = url // Keep original URL
                     }
                 }
@@ -76,19 +63,15 @@ struct ManifestEntry: Codable, Identifiable {
         } else if urlString.hasPrefix("/") {
             // Absolute path - check if it exists or needs migration
             let originalPath = urlString
-            print("🔍 MANIFEST DEBUG: Original absolute path: \(originalPath)")
             
             if FileManager.default.fileExists(atPath: originalPath) {
                 localURL = URL(fileURLWithPath: originalPath)
-                print("🔍 MANIFEST DEBUG: Using existing absolute path: \(localURL.path)")
             } else {
                 // File doesn't exist at old path - try to find it in current container
-                print("🔍 MANIFEST DEBUG: File not found at old absolute path, attempting migration...")
                 
                 // Extract the relative path from the old absolute path
                 if let libraryRange = originalPath.range(of: "/Library/") {
                     let relativePath = String(originalPath[libraryRange.upperBound...])
-                    print("🔍 MANIFEST DEBUG: Extracted relative path: \(relativePath)")
                     
                     guard let currentLibraryURL = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first else {
                         throw DecodingError.dataCorrupted(DecodingError.Context(
@@ -98,23 +81,18 @@ struct ManifestEntry: Codable, Identifiable {
                     }
                     
                     let newURL = currentLibraryURL.appendingPathComponent(relativePath)
-                    print("🔍 MANIFEST DEBUG: Trying new path: \(newURL.path)")
                     
                     if FileManager.default.fileExists(atPath: newURL.path) {
                         localURL = newURL
-                        print("✅ MANIFEST DEBUG: Successfully migrated to: \(localURL.path)")
                     } else {
                         // Try to find the model file in any simulator container
                         if let foundPath = Self.findModelInSimulator(filename: URL(fileURLWithPath: originalPath).lastPathComponent) {
                             localURL = foundPath
-                            print("✅ MANIFEST DEBUG: Found model in different container: \(localURL.path)")
                         } else {
-                            print("❌ MANIFEST DEBUG: File not found anywhere")
                             localURL = URL(fileURLWithPath: originalPath) // Keep original for error reporting
                         }
                     }
                 } else {
-                    print("❌ MANIFEST DEBUG: Could not extract relative path from: \(originalPath)")
                     localURL = URL(fileURLWithPath: originalPath) // Keep original
                 }
             }
@@ -127,8 +105,6 @@ struct ManifestEntry: Codable, Identifiable {
                 ))
             }
             localURL = libraryURL.appendingPathComponent(urlString)
-            print("🔍 MANIFEST DEBUG: Converted relative to absolute: \(localURL.path)")
-            print("🔍 MANIFEST DEBUG: Library directory: \(libraryURL.path)")
         }
     }
     
@@ -209,13 +185,13 @@ actor ManifestStore {
         entries.append(entry)
         let data = try JSONEncoder().encode(entries)
         try data.write(to: fileURL, options: .atomic)
-        didChange.send()                                   // ← NEW
+        didChange.send()
     }
 
     func remove(id: String) throws {
         entries.removeAll { $0.id == id }
         let data = try JSONEncoder().encode(entries)
         try data.write(to: fileURL, options: .atomic)
-        didChange.send()                                   // ← NEW
+        didChange.send()                                   
     }
 }
