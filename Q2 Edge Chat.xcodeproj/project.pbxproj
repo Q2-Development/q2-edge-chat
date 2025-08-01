@@ -13,6 +13,7 @@
 		13AF4A922E3336EA004AC50F /* BrowseModelsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13AF4A912E3336DF004AC50F /* BrowseModelsViewModel.swift */; };
 		13AF4A942E333729004AC50F /* ModelBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13AF4A932E333720004AC50F /* ModelBrowserView.swift */; };
 		13AF4AAB2E343ABC004AC50F /* MarkdownText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13AF4AAA2E343ABC004AC50F /* MarkdownText.swift */; };
+		13AF4AAD2E343DEF004AC50F /* ModelSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13AF4AAC2E343DEF004AC50F /* ModelSettingsView.swift */; };
 		13AF4A962E333AB5004AC50F /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13AF4A952E333AB0004AC50F /* ChatViewModel.swift */; };
 		13AF4A982E333C30004AC50F /* ModelPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13AF4A972E333C27004AC50F /* ModelPickerView.swift */; };
 		13AF4A9D2E342DB4004AC50F /* ChatManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13AF4A9C2E342DB1004AC50F /* ChatManager.swift */; };
@@ -55,6 +56,7 @@
 		13AF4A912E3336DF004AC50F /* BrowseModelsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowseModelsViewModel.swift; sourceTree = "<group>"; };
 		13AF4A932E333720004AC50F /* ModelBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelBrowserView.swift; sourceTree = "<group>"; };
 		13AF4AAA2E343ABC004AC50F /* MarkdownText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownText.swift; sourceTree = "<group>"; };
+		13AF4AAC2E343DEF004AC50F /* ModelSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelSettingsView.swift; sourceTree = "<group>"; };
 		13AF4A952E333AB0004AC50F /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
 		13AF4A972E333C27004AC50F /* ModelPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelPickerView.swift; sourceTree = "<group>"; };
 		13AF4A9C2E342DB1004AC50F /* ChatManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatManager.swift; sourceTree = "<group>"; };
@@ -162,6 +164,7 @@
 				13AF4A972E333C27004AC50F /* ModelPickerView.swift */,
 				13AF4A932E333720004AC50F /* ModelBrowserView.swift */,
 				13AF4AAA2E343ABC004AC50F /* MarkdownText.swift */,
+				13AF4AAC2E343DEF004AC50F /* ModelSettingsView.swift */,
 				21E506602E2D651D00D26F61 /* MessagesView.swift */,
 				21E506572E2D1FD200D26F61 /* ChatView.swift */,
 				21E506532E2D1DE200D26F61 /* ContentView.swift */,
@@ -359,6 +362,7 @@
 				21E506612E2D651D00D26F61 /* MessagesView.swift in Sources */,
 				13AF4A942E333729004AC50F /* ModelBrowserView.swift in Sources */,
 				13AF4AAB2E343ABC004AC50F /* MarkdownText.swift in Sources */,
+				13AF4AAD2E343DEF004AC50F /* ModelSettingsView.swift in Sources */,
 				13B882542E2B7716006A0005 /* Q2_Edge_ChatApp.swift in Sources */,
 				21E506542E2D1DE200D26F61 /* ContentView.swift in Sources */,
 				13AF4A982E333C30004AC50F /* ModelPickerView.swift in Sources */,

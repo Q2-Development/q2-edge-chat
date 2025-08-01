@@ -96,7 +96,7 @@ final class ChatManager: ObservableObject {
             let engine = try engine(for: entry.localURL)
             print("✅ CHAT DEBUG: Engine created successfully")
             
-            try await engine.generate(prompt: text) { token in
+            try await engine.generate(prompt: text, settings: sessions[idx].modelSettings) { token in
                 Task { @MainActor in
                     // Validate session still exists and index is valid
                     guard idx < self.sessions.count,
