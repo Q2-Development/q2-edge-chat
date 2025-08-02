@@ -1,0 +1,45 @@
+# Privacy Policy for Q2 Edge Chat
+
+**Last Updated: August 2, 2025**
+
+This Privacy Policy describes how Q2 Edge Chat ("the App") handles your information. The App is designed with privacy as a core principle.
+
+## 1. Information We Don't Collect
+
+Q2 Edge Chat is a privacy-focused application. We do not collect, store, or transmit any of your personal data. Specifically:
+
+* **No Personal Information:** We do not require you to provide any personal information to use the App.
+* **No Chat Data:** All chat conversations are processed and stored locally on your device. They are never sent to our servers or any third party.
+* **No Analytics or Telemetry:** The App does not include any analytics or telemetry services to track your usage.
+
+## 2. Information Processed on Your Device
+
+All data processing for the core chat functionality occurs locally on your device:
+
+* **Chat History:** Your chat messages and conversations are saved on your device, allowing you to maintain a persistent chat history across sessions.
+* **Model Processing:** The large language models run directly on your device. No data from your conversations is sent over the network during chat sessions.
+* **Model Downloads:** To use the chat functionality, you need to download language models. The App facilitates downloading models from HuggingFace. This requires an internet connection, and the download process is subject to the privacy policy of HuggingFace. Once downloaded, the models are stored locally on your device.
+
+## 3. Data You Control
+
+* **Chat Export:** You have the option to export your chat conversations. This feature saves your chat history to a file on your device, which you can then share or store as you wish.
+* **Model Management:** You can download and delete the language models stored on your device at any time through the App's model browser.
+
+## 4. Third-Party Services
+
+The only third-party service the App interacts with is the HuggingFace API, which is used to browse and download models. We do not share any personal information with HuggingFace. Your interactions with HuggingFace are subject to their own privacy policy and terms of service.
+
+## 5. Permissions
+
+The App may require the following permissions:
+
+* **Storage:** To store downloaded models and your chat history on your device.
+* **Network Access:** To download models from HuggingFace. No network access is used for the chat functionality itself.
+
+## 6. Changes to This Privacy Policy
+
+We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy in this section. You are advised to review this Privacy Policy periodically for any changes.
+
+## 7. Contact Us
+
+If you have any questions about this Privacy Policy, please feel free to open an issue on our GitHub page or fill out our support form: https://michaelgathara.com/q2-edge-support
