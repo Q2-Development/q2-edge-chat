@@ -41,9 +41,9 @@ struct MessagesView: View {
                 .padding(.vertical, 16)
             }
             .gesture(
-                DragGesture()
+                DragGesture(minimumDistance: 1)
                     .onChanged { _ in
-                        // TODO: Fix dismissing keyboard when user starts scrolling
+                        // Dismiss keyboard as soon as user starts scrolling
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     }
             )

@@ -29,11 +29,11 @@ struct MessageRow: View {
                         alignment: .leading
                     )
                 }
-                .frame(maxWidth: .infinity * 0.75, alignment: .leading)
+                .frame(maxWidth: 280, alignment: .leading)
                 
-                Spacer()
+                Spacer(minLength: 40)
             } else {
-                Spacer()
+                Spacer(minLength: 40)
                 
                 VStack(alignment: .trailing, spacing: 4) {
                     HStack(spacing: 6) {
@@ -52,7 +52,7 @@ struct MessageRow: View {
                         alignment: .trailing
                     )
                 }
-                .frame(maxWidth: .infinity * 0.75, alignment: .trailing)
+                .frame(maxWidth: 280, alignment: .trailing)
             }
         }
         .padding(.horizontal, 16)
