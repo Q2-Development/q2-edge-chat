@@ -60,13 +60,10 @@ final class ChatManager: ObservableObject {
         saveSessions()
 
         let manifestEntries = await manifest.all()
-        print("🔍 CHAT DEBUG: Available models in manifest: \(manifestEntries.map(\.id))")
-        print("🔍 CHAT DEBUG: Selected model ID: \(sessions[idx].modelID)")
         
         guard
             let entry = manifestEntries.first(where: { $0.id == sessions[idx].modelID })
         else {
-            print("❌ CHAT DEBUG: Model not found in manifest")
             sessions[idx].messages.append(
                 .init(speaker: .assistant,
                       text: "Selected model not downloaded.")
@@ -75,26 +72,14 @@ final class ChatManager: ObservableObject {
             return
         }
         
-        print("🔍 CHAT DEBUG: Found model entry: \(entry.id)")
-        print("🔍 CHAT DEBUG: Model localURL: \(entry.localURL)")
-        print("🔍 CHAT DEBUG: Model path: \(entry.localURL.path)")
-        print("🔍 CHAT DEBUG: File exists at path: \(FileManager.default.fileExists(atPath: entry.localURL.path))")
-        
-        // Try to get file attributes for more debugging
         do {
             let attributes = try FileManager.default.attributesOfItem(atPath: entry.localURL.path)
-            if let fileSize = attributes[.size] as? Int64 {
-                print("🔍 CHAT DEBUG: File size: \(fileSize) bytes (\(fileSize / 1_048_576) MB)")
-            }
         } catch {
-            print("❌ CHAT DEBUG: Could not get file attributes: \(error)")
+            print("CHAT DEBUG: Could not get file attributes: \(error)")
         }
 
-        // Generate response directly without wrapping in Task that swallows errors
         do {
-            print("🔍 CHAT DEBUG: About to create engine for URL: \(entry.localURL)")
             let engine = try engine(for: entry.localURL)
-            print("✅ CHAT DEBUG: Engine created successfully")
             
             try await engine.generate(prompt: text, settings: sessions[idx].modelSettings) { token in
                 Task { @MainActor in
@@ -115,17 +100,12 @@ final class ChatManager: ObservableObject {
                 sessions[idx].messages[ai].text.append(" [Cancelled]")
             }
         } catch {
-            print("❌ CHAT DEBUG: Error during generation: \(error)")
-            print("❌ CHAT DEBUG: Error type: \(type(of: error))")
-            
-            // Validate session still exists before adding error message
             guard idx < sessions.count, sessions[idx].id == id else { return }
             sessions[idx].messages.append(.init(
                 speaker: .assistant,
                 text: "⚠️ \(error.localizedDescription)"
             ))
             
-            // Re-throw error to propagate it to ChatViewModel
             throw error
         }
         
@@ -142,10 +122,6 @@ final class ChatManager: ObservableObject {
         if engines.count >= maxCachedEngines {
             evictOldestEngine()
         }
-
-        // Debug logging
-        print("🔍 DEBUG: Attempting to load model from: \(url.path)")
-        print("🔍 DEBUG: File exists: \(FileManager.default.fileExists(atPath: url.path))")
 
         let e = try LlamaEngine(modelURL: url)
         engines[url] = e

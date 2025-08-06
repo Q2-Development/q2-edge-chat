@@ -7,6 +7,7 @@ enum LlamaEngineError: Error {
     case invalidModelFormat(String)
     case modelTooSmall(Int64)
     case modelLoadFailed(String)
+    case modelTooLargeForMemory(String)
     case validationFailed(String)
     case generationError(String)
     
@@ -21,11 +22,13 @@ enum LlamaEngineError: Error {
         case .modelTooSmall(let size):
             return "Model file too small (\(size) bytes). May be corrupted."
         case .modelLoadFailed(let error):
-            return "Failed to load model: \(error)"
+            return "Unable to load the model. This may be due to a corrupted file or incompatible format. Technical details: \(error)"
+        case .modelTooLargeForMemory(let modelName):
+            return "The model '\(modelName)' is too large to fit into memory. Please choose a smaller model or free up system memory."
         case .validationFailed(let error):
             return "Model validation failed: \(error)"
         case .generationError(let error):
-            return "Text generation failed: \(error)"
+            return "Unable to generate response. This may be due to an issue with the model or prompt. Technical details: \(error)"
         }
     }
 }
@@ -64,6 +67,19 @@ final class LlamaEngine {
         do {
             self.swiftLlama = try SwiftLlama(modelPath: modelURL.path)
         } catch {
+            let errorMessage = error.localizedDescription.lowercased()
+            let modelName = modelURL.lastPathComponent
+            
+            // Check for memory-related errors
+            if errorMessage.contains("memory") || 
+               errorMessage.contains("allocation") ||
+               errorMessage.contains("out of memory") ||
+               errorMessage.contains("failed to allocate") ||
+               errorMessage.contains("insufficient memory") ||
+               errorMessage.contains("mmap") {
+                throw LlamaEngineError.modelTooLargeForMemory(modelName)
+            }
+            
             throw LlamaEngineError.modelLoadFailed(error.localizedDescription)
         }
     }
@@ -99,6 +115,17 @@ final class LlamaEngine {
         } catch is CancellationError {
             throw CancellationError()
         } catch {
+            let errorMessage = error.localizedDescription.lowercased()
+            
+            // Check for memory-related errors during generation
+            if errorMessage.contains("memory") || 
+               errorMessage.contains("allocation") ||
+               errorMessage.contains("out of memory") ||
+               errorMessage.contains("failed to allocate") ||
+               errorMessage.contains("insufficient memory") {
+                throw LlamaEngineError.modelTooLargeForMemory("Current model")
+            }
+            
             throw LlamaEngineError.generationError(error.localizedDescription)
         }
     }

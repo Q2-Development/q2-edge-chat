@@ -23,14 +23,13 @@ struct ChatView: View {
             VStack(spacing: 0) {
                 Divider()
                 
-                HStack(alignment: .bottom, spacing: 12) {
+                HStack(alignment: .bottom, spacing: 8) {
                     // Text Input
-                    DynamicTextEditor(text: $vm.inputText)
-                        .frame(minHeight: 10, maxHeight: 80)
+                    DynamicTextEditor(text: $vm.inputText, placeholder: "Type a message...", maxHeight: 100)
                         .padding(.horizontal, 12)
-                        .padding(.vertical, 4)
+                        .padding(.vertical, 8)
                         .background(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            RoundedRectangle(cornerRadius: 20)
                                 .fill(Color(.systemGray6))
                                 .stroke(Color(.systemGray4), lineWidth: 0.5)
                         )

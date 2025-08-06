@@ -1,110 +1,48 @@
-//https://pastebin.com/Rv6XAPmY
-//bc textfield is for one line inputs
-//and texteditor is trash by default
-
 import SwiftUI
- 
-struct ManagedTextView: UIViewRepresentable {
-    typealias UIViewType = UITextView
- 
-    @Binding var text: String
-    let textDidChange: ((UITextView) -> Void)?
-    
-    init(text: Binding<String>, textDidChange: ((UITextView) -> Void)? = nil) {
-        self.textDidChange = textDidChange
-        self._text = text
-    }
- 
-    func makeUIView(context: Context) -> UITextView {
-        let view = UITextView()
-        view.isEditable = true
-        view.delegate = context.coordinator
-        view.font = UIFont.preferredFont(forTextStyle: .body)
-        view.adjustsFontForContentSizeCategory = true
-        view.backgroundColor = .clear
-        view.textAlignment = .left
-        view.textContainerInset = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
-        view.contentInsetAdjustmentBehavior = .never
-        view.isScrollEnabled = false
-        return view
-    }
- 
-    func updateUIView(_ uiView: UITextView, context: Context) {
-        uiView.text = self.text
-        DispatchQueue.main.async {
-            self.textDidChange?(uiView)
-        }
-    }
- 
-    func makeCoordinator() -> Coordinator {
-        return Coordinator(text: $text, textDidChange: textDidChange)
-    }
- 
-    class Coordinator: NSObject, UITextViewDelegate {
-        @Binding var text: String
-        let textDidChange: ((UITextView) -> Void)?
- 
-        init(text: Binding<String>, textDidChange: ((UITextView) -> Void)?) {
-            self._text = text
-            self.textDidChange = textDidChange
-        }
- 
-        func textViewDidChange(_ textView: UITextView) {
-            self.text = textView.text
-            self.textDidChange?(textView)
-        }
-    }
-}
- 
+
 struct DynamicTextEditor: View {
-    @Environment(\.verticalSizeClass) private var verticalSize
     @Binding var text: String
-    
-    private let minHeight: CGFloat = UIFont.preferredFont(forTextStyle: .body).lineHeight + 4
-    @State private var currentHeight: CGFloat?
+    let placeholder: String?
     let maxHeight: CGFloat?
     let maxHeightCompact: CGFloat?
-    let placeholder: String?
     
-    private let placeholderPadding: CGFloat = 0
+    @Environment(\.verticalSizeClass) private var verticalSize
+    @State private var textHeight: CGFloat = 0
     
-    init(text: Binding<String>, placeholder: String? = nil, maxHeight: CGFloat? = nil, maxHeightCompact: CGFloat? = nil) {
+    init(text: Binding<String>, placeholder: String? = "Type a message...", maxHeight: CGFloat? = 120, maxHeightCompact: CGFloat? = 80) {
         self._text = text
+        self.placeholder = placeholder
         self.maxHeight = maxHeight
         self.maxHeightCompact = maxHeightCompact
-        self.placeholder = placeholder
+    }
+    
+    private var currentMaxHeight: CGFloat {
+        if verticalSize == .compact, let maxHeightCompact = maxHeightCompact {
+            return maxHeightCompact
+        } else if let maxHeight = maxHeight {
+            return maxHeight
+        } else {
+            return 120
+        }
     }
     
     var body: some View {
-        ManagedTextView(text: $text, textDidChange: textDidChange(_:))
-            .frame(height: frameHeight)
-            .background(
-                HStack {
-                    VStack {
-                        HStack {
-                            Text(placeholder ?? "Type a message...")
-                                .foregroundColor(Color.secondary.opacity(0.6))
-                                .padding(.leading, placeholderPadding)
-                            Spacer()
-                        }
-                        Spacer()
-                    }
-                    .opacity(text.count == 0 ? 1.0 : 0)
-                }
-            )
-    }
-    
-    private var frameHeight: CGFloat {
-        if verticalSize == .compact, let maxHeightCompact = maxHeightCompact {
-            return min(currentHeight ?? minHeight, maxHeightCompact)
-        } else if let maxHeight = maxHeight {
-            return min(currentHeight ?? minHeight, maxHeight)
-        } else {
-            return currentHeight ?? minHeight
+        ZStack(alignment: .topLeading) {
+            // Placeholder
+            if text.isEmpty {
+                Text(placeholder ?? "Type a message...")
+                    .foregroundColor(Color.secondary.opacity(0.6))
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 8)
+                    .allowsHitTesting(false)
+            }
+            
+            // TextEditor
+            TextEditor(text: $text)
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
+                .frame(minHeight: 36, maxHeight: currentMaxHeight)
+                .fixedSize(horizontal: false, vertical: true)
         }
-    }
-    
-    private func textDidChange(_ textView: UITextView) {
-        currentHeight = textView.contentSize.height
     }
 }

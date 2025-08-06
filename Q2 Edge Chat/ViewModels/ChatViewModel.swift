@@ -38,13 +38,8 @@ final class ChatViewModel: ObservableObject {
         do {
             try await manager.send(prompt, in: session.id)
         } catch {
-            print("🔍 CHAT DEBUG: Error in send(): \(error)")
-            print("🔍 CHAT DEBUG: Error type: \(type(of: error))")
-            
-            // Restore input text on error and show error message
             inputText = originalInput
             
-            // Provide specific error messages for different error types
             if let llamaError = error as? LlamaEngineError {
                 errorMessage = "Model Error: \(llamaError.localizedDescription)"
             } else {

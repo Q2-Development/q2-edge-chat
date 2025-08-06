@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MessagesView: View {
     let messages: [Message]
+    var dismissKeyboard: () -> Void = {}
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -40,10 +41,11 @@ struct MessagesView: View {
                 }
                 .padding(.vertical, 16)
             }
-            .gesture(
-                DragGesture()
+            .scrollDismissesKeyboard(.immediately)
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 1)
                     .onChanged { _ in
-                        // TODO: Fix dismissing keyboard when user starts scrolling
+                        // Dismiss keyboard as soon as user starts scrolling
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     }
             )
