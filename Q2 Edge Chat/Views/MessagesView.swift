@@ -41,7 +41,8 @@ struct MessagesView: View {
                 }
                 .padding(.vertical, 16)
             }
-            .gesture(
+            .scrollDismissesKeyboard(.immediately)
+            .simultaneousGesture(
                 DragGesture(minimumDistance: 1)
                     .onChanged { _ in
                         // Dismiss keyboard as soon as user starts scrolling
