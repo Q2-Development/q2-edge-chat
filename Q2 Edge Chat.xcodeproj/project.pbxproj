@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		133B3A962E34670900F108AD /* LLamaSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 133B3A952E34670900F108AD /* LLamaSwift */; };
+		132C42FE2E4333B500E24B13 /* SwiftLlama in Frameworks */ = {isa = PBXBuildFile; productRef = 132C42FD2E4333B500E24B13 /* SwiftLlama */; };
 		1371CE602E34333600209092 /* ModelManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1371CE5F2E34333400209092 /* ModelManifest.swift */; };
 		1371CE6C2E345FF700209092 /* LlamaEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1371CE612E34547700209092 /* LlamaEngine.swift */; };
 		13AF4A922E3336EA004AC50F /* BrowseModelsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13AF4A912E3336DF004AC50F /* BrowseModelsViewModel.swift */; };
@@ -98,7 +98,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				133B3A962E34670900F108AD /* LLamaSwift in Frameworks */,
+				132C42FE2E4333B500E24B13 /* SwiftLlama in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -125,7 +125,6 @@
 				13B882512E2B7716006A0005 /* Q2 Edge Chat */,
 				139FBB4B2E2A1D37003EF52B /* Q2 Edge ChatTests */,
 				139FBB552E2A1D37003EF52B /* Q2 Edge ChatUITests */,
-				21E506A62E2DBB1C00D26F61 /* Frameworks */,
 				139FBB3C2E2A1D35003EF52B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -201,13 +200,6 @@
 			path = Services;
 			sourceTree = "<group>";
 		};
-		21E506A62E2DBB1C00D26F61 /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			name = Frameworks;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -228,7 +220,7 @@
 			);
 			name = "Q2 Edge Chat";
 			packageProductDependencies = (
-				133B3A952E34670900F108AD /* LLamaSwift */,
+				132C42FD2E4333B500E24B13 /* SwiftLlama */,
 			);
 			productName = "Q2 Edge Chat";
 			productReference = 139FBB3B2E2A1D35003EF52B /* Q2 Edge Chat.app */;
@@ -313,7 +305,7 @@
 			mainGroup = 139FBB322E2A1D35003EF52B;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				133B3A942E34670900F108AD /* XCRemoteSwiftPackageReference "llama-cpp-swift" */,
+				132C42FC2E4333B500E24B13 /* XCRemoteSwiftPackageReference "QSwiftLlama" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 139FBB3C2E2A1D35003EF52B /* Products */;
@@ -546,7 +538,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -577,7 +569,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -701,9 +693,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		133B3A942E34670900F108AD /* XCRemoteSwiftPackageReference "llama-cpp-swift" */ = {
+		132C42FC2E4333B500E24B13 /* XCRemoteSwiftPackageReference "QSwiftLlama" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/Q2-Development/llama-cpp-swift";
+			repositoryURL = "https://github.com/Q2-Development/QSwiftLlama";
 			requirement = {
 				branch = main;
 				kind = branch;
@@ -712,10 +704,10 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		133B3A952E34670900F108AD /* LLamaSwift */ = {
+		132C42FD2E4333B500E24B13 /* SwiftLlama */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 133B3A942E34670900F108AD /* XCRemoteSwiftPackageReference "llama-cpp-swift" */;
-			productName = LLamaSwift;
+			package = 132C42FC2E4333B500E24B13 /* XCRemoteSwiftPackageReference "QSwiftLlama" */;
+			productName = SwiftLlama;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -1,5 +1,5 @@
 import Foundation
-import LLamaSwift
+import SwiftLlama
 
 enum LlamaEngineError: Error {
     case modelNotFound(String)
@@ -31,7 +31,7 @@ enum LlamaEngineError: Error {
 }
 
 final class LlamaEngine {
-    private let llama: LLamaSwift.LLama
+    private let swiftLlama: SwiftLlama
     private let modelURL: URL
 
     init(modelURL: URL) throws {
@@ -62,8 +62,7 @@ final class LlamaEngine {
         }
         
         do {
-            let model = try LLamaSwift.Model(modelPath: modelURL.path)
-            self.llama = LLamaSwift.LLama(model: model)
+            self.swiftLlama = try SwiftLlama(modelPath: modelURL.path)
         } catch {
             throw LlamaEngineError.modelLoadFailed(error.localizedDescription)
         }
@@ -86,11 +85,14 @@ final class LlamaEngine {
             throw LlamaEngineError.generationError("Prompt too long (max 50,000 characters)")
         }
         
-        let finalPrompt = settings.systemPrompt.isEmpty ? prompt : "\(settings.systemPrompt)\n\n\(prompt)"
-        
         do {
-            for try await token in await llama.infer(prompt: finalPrompt,
-                                                     maxTokens: settings.maxTokens) {
+            let llamaPrompt = Prompt(
+                type: .llama3,
+                systemPrompt: settings.systemPrompt,
+                userMessage: prompt
+            )
+            
+            for try await token in await swiftLlama.start(for: llamaPrompt) {
                 try Task.checkCancellation()
                 tokenHandler(token)
             }

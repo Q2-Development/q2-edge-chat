@@ -1,5 +1,5 @@
 import Foundation
-import LLamaSwift
+import SwiftLlama
 
 struct HFSibling: Codable {
     let rfilename: String
