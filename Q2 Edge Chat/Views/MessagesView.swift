@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MessagesView: View {
     let messages: [Message]
+    var dismissKeyboard: () -> Void = {}
 
     var body: some View {
         ScrollViewReader { proxy in
