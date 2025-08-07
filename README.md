@@ -1,4 +1,5 @@
 # Q2 Edge Chat
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 A privacy-focused chat application that runs large language models locally on your iPhone; putting the power of generative ai models directly in your hands. Experiment with as many models as you want, ask questions, explore prompts, research different system prompts, and be in full control!
 
