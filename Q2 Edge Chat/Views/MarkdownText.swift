@@ -15,9 +15,49 @@ struct MarkdownText: View {
         var elements: [MarkdownElement] = []
         let lines = text.components(separatedBy: .newlines)
         var currentIndex = 0
+        var isInCodeBlock = false
+        var currentCodeLines: [String] = []
+        var codeLanguage: String? = nil
+        
+        func flushCodeBlock() {
+            if !currentCodeLines.isEmpty {
+                let codeContent = currentCodeLines.joined(separator: "\n")
+                elements.append(
+                    MarkdownElement(
+                        id: currentIndex,
+                        type: .codeBlock,
+                        content: codeContent,
+                        extra: codeLanguage
+                    )
+                )
+                currentCodeLines.removeAll()
+                codeLanguage = nil
+                currentIndex += 1
+            }
+        }
         
         for line in lines {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
+            
+            if trimmed.hasPrefix("```") {
+                if isInCodeBlock {
+                    // End of code block
+                    flushCodeBlock()
+                    isInCodeBlock = false
+                } else {
+                    // Start of code block
+                    isInCodeBlock = true
+                    // Capture language if provided after ```
+                    let lang = trimmed.replacingOccurrences(of: "```", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+                    codeLanguage = lang.isEmpty ? nil : lang
+                }
+                continue
+            }
+            
+            if isInCodeBlock {
+                currentCodeLines.append(line)
+                continue
+            }
             
             if trimmed.isEmpty {
                 elements.append(MarkdownElement(id: currentIndex, type: .spacing))
@@ -27,17 +67,17 @@ struct MarkdownText: View {
                 elements.append(MarkdownElement(id: currentIndex, type: .header2, content: String(trimmed.dropFirst(3))))
             } else if trimmed.hasPrefix("### ") {
                 elements.append(MarkdownElement(id: currentIndex, type: .header3, content: String(trimmed.dropFirst(4))))
-            } else if trimmed.hasPrefix("```") {
-                elements.append(MarkdownElement(id: currentIndex, type: .codeBlock, content: trimmed))
             } else if trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") {
                 elements.append(MarkdownElement(id: currentIndex, type: .bulletPoint, content: String(trimmed.dropFirst(2))))
             } else {
                 elements.append(MarkdownElement(id: currentIndex, type: .paragraph, content: trimmed))
             }
-            
             currentIndex += 1
         }
-        
+        // Flush any trailing code block (if file ended without closing)
+        if isInCodeBlock {
+            flushCodeBlock()
+        }
         return elements
     }
     
@@ -63,7 +103,7 @@ struct MarkdownText: View {
                 .padding(.top, 4)
                 
         case .paragraph:
-            Text(parseInlineMarkdown(element.content ?? ""))
+            Text(element.content ?? "")
                 .font(.body)
                 .lineLimit(nil)
                 
@@ -71,18 +111,30 @@ struct MarkdownText: View {
             HStack(alignment: .top, spacing: 8) {
                 Text("•")
                     .font(.body)
-                Text(parseInlineMarkdown(element.content ?? ""))
+                Text(element.content ?? "")
                     .font(.body)
                     .lineLimit(nil)
                 Spacer(minLength: 0)
             }
             
         case .codeBlock:
-            Text(element.content ?? "")
-                .font(.system(.body, design: .monospaced))
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(8)
+            VStack(alignment: .leading, spacing: 0) {
+                if let lang = element.extra, !lang.isEmpty {
+                    Text(lang.uppercased())
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.top, 4)
+                }
+                ScrollView(.horizontal, showsIndicators: false) {
+                    Text(element.content ?? "")
+                        .font(.system(.body, design: .monospaced))
+                        .foregroundColor(.primary)
+                        .padding(8)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(6)
+                }
+            }
                 
         case .spacing:
             Spacer()
@@ -90,35 +142,20 @@ struct MarkdownText: View {
         }
     }
     
-    private func parseInlineMarkdown(_ text: String) -> AttributedString {
-        var attributed = AttributedString(text)
-        
-        let boldPattern = #/\*\*(.*?)\*\*/#
-        let matches = text.matches(of: boldPattern)
-        
-        for match in matches.reversed() {
-            let range = match.range
-            let content = String(match.1)
-            let startIndex = attributed.index(attributed.startIndex, offsetByCharacters: range.lowerBound.utf16Offset(in: text))
-            let endIndex = attributed.index(attributed.startIndex, offsetByCharacters: range.upperBound.utf16Offset(in: text))
-            
-            attributed.replaceSubrange(startIndex..<endIndex, with: AttributedString(content))
-            attributed[startIndex..<attributed.index(startIndex, offsetByCharacters: content.count)].font = .body.bold()
-        }
-        
-        return attributed
-    }
+
 }
 
 struct MarkdownElement {
     let id: Int
     let type: MarkdownElementType
     let content: String?
+    let extra: String?
     
-    init(id: Int, type: MarkdownElementType, content: String? = nil) {
+    init(id: Int, type: MarkdownElementType, content: String? = nil, extra: String? = nil) {
         self.id = id
         self.type = type
         self.content = content
+        self.extra = extra
     }
 }
 
