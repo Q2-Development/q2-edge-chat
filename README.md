@@ -63,7 +63,7 @@ Q2 Edge Chat/
 ## Getting Started
 
 ### Prerequisites
-- iOS 17.0+ or macOS 13.0+
+- iOS 18.0+ or macOS 13.0+
 - Xcode 14.0+
 - 4GB+ available storage (for models)
 
