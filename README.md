@@ -3,7 +3,7 @@
 A privacy-focused chat application that runs large language models locally on your device. Built with SwiftUI for iOS, Q2 Edge Chat provides secure, offline conversations without data leaving your device.
 
 <p align="center">
-  <img src="readme_images/top_cover.png" alt="Top Cover" width="100%"/>
+  <img src="readme_images/top_cover.png" alt="Top Cover" width="100%" style="border-radius: 12px;"/>
 </p>
 
 ## Features
@@ -116,24 +116,24 @@ We welcome contributions! Please feel free to submit issues and pull requests.
 ## Screenshots
 
 <p align="center">
-  <img src="readme_images/main.png" alt="Main Screen" width="45%"/>
+  <img src="readme_images/main.png" alt="Main Screen" width="45%" style="border-radius: 8px;"/>
 </p>
 <p align="center">
-  <img src="readme_images/browse_models.png" alt="Browse Models" width="45%"/>
-  <img src="readme_images/search_models.png" alt="Search Models" width="45%"/>
+  <img src="readme_images/browse_models.png" alt="Browse Models" width="45%" style="border-radius: 8px;"/>
+  <img src="readme_images/search_models.png" alt="Search Models" width="45%" style="border-radius: 8px;"/>
 </p>
 <p align="center">
-  <img src="readme_images/chat_window.png" alt="Chat Window" width="45%"/>
-  <img src="readme_images/sidebar.png" alt="Sidebar" width="45%"/>
+  <img src="readme_images/chat_window.png" alt="Chat Window" width="45%" style="border-radius: 8px;"/>
+  <img src="readme_images/sidebar.png" alt="Sidebar" width="45%" style="border-radius: 8px;"/>
 </p>
 <p align="center">
-  <img src="readme_images/model_settings.png" alt="Model Settings" width="45%"/>
-  <img src="readme_images/export_settings.png" alt="Export Settings" width="45%"/>
+  <img src="readme_images/model_settings.png" alt="Model Settings" width="45%" style="border-radius: 8px;"/>
+  <img src="readme_images/export_settings.png" alt="Export Settings" width="45%" style="border-radius: 8px;"/>
 </p>
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License, Version 2.0. See the [LICENSE](LICENSE) file for details.
 
 ## Support
 
