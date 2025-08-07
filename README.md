@@ -1,6 +1,6 @@
 # Q2 Edge Chat
 
-A privacy-focused chat application that runs large language models locally on your device. Built with SwiftUI for iOS, Q2 Edge Chat provides secure, offline conversations without data leaving your device.
+A privacy-focused chat application that runs large language models locally on your iPhone; putting the power of generative ai models directly in your hands. Experiment with as many models as you want, ask questions, explore prompts, research different system prompts, and be in full control!
 
 <p align="center">
   <img src="readme_images/top_cover.png" alt="Top Cover" width="100%" style="border-radius: 12px;"/>
