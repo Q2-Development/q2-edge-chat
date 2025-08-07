@@ -123,7 +123,7 @@ We welcome contributions! Please feel free to submit issues and pull requests.
   <img src="readme_images/search_models.png" alt="Search Models" width="45%" style="border-radius: 8px;"/>
 </p>
 <p align="center">
-  <img src="readme_images/chat_window.png" alt="Chat Window" width="45%" style="border-radius: 8px;"/>
+  <img src="readme_images/chat_window.jpg" alt="Chat Window" width="45%" style="border-radius: 8px;"/>
   <img src="readme_images/sidebar.png" alt="Sidebar" width="45%" style="border-radius: 8px;"/>
 </p>
 <p align="center">
