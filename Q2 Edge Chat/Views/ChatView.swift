@@ -15,6 +15,36 @@ struct ChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            HStack {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        manager.isSidebarHidden.toggle()
+                    }
+                } label: {
+                    Image(systemName: "sidebar.left")
+                        .font(.title3)
+                }
+                .buttonStyle(.plain)
+                .padding(25)
+                Spacer()
+                ModelPickerView(selection: $session.modelID)
+                Spacer()
+                Menu {
+                    Button("Model Settings") {
+                        showingSettings = true
+                    }
+                    Button("Clear Chat") {
+                        session.messages.removeAll()
+                    }
+                    Button("Export Chat") {
+                        showingExport = true
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.title3)
+                }
+                .padding(25)
+            }
             // Chat Messages Area
             MessagesView(messages: session.messages)
                 .background(Color(.systemGroupedBackground))
@@ -50,46 +80,7 @@ struct ChatView: View {
                 .background(Color(.systemBackground))
             }
         }
-        .navigationTitle("")
-        .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) { 
-                        manager.isSidebarHidden.toggle() 
-                    }
-                } label: {
-                    Image(systemName: "sidebar.left")
-                        .font(.title3)
-                }
-                .buttonStyle(.plain)
-                .padding(.top, 25)
-            }
-
-            ToolbarItem(placement: .principal) {
-                ModelPickerView(selection: $session.modelID)
-                    .padding(.top, 25)
-            }
-
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Menu {
-                    Button("Model Settings") {
-                        showingSettings = true
-                    }
-                    Button("Clear Chat") {
-                        session.messages.removeAll()
-                    }
-                    Button("Export Chat") {
-                        showingExport = true
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.title3)
-                }
-                .padding(.top, 25)
-            }
-        }
         .sheet(isPresented: $showingSettings) {
             ModelSettingsView(settings: $session.modelSettings)
         }
