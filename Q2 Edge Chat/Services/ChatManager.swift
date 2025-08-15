@@ -13,7 +13,7 @@ final class ChatManager: ObservableObject {
     private let maxCachedEngines = 3
     private let manifest: ManifestStore
     private var bag = Set<AnyCancellable>()
-    private var activeTasks: [UUID: Task<Void, Never>] = [:]
+    private var activeTasks: [UUID: Task<Void, Error>] = [:]
 
     init() {
         do {
@@ -30,6 +30,18 @@ final class ChatManager: ObservableObject {
                 Task { await self?.sanitizeSessions() }
             }
             .store(in: &bag)
+    }
+
+    func cancel(_ id: UUID) {
+        activeTasks[id]?.cancel()
+    }
+
+    func persistSessions() {
+        saveSessions()
+    }
+
+    func isGenerating(_ id: UUID) -> Bool {
+        return activeTasks[id] != nil
     }
 
     func newChat() {
@@ -50,9 +62,7 @@ final class ChatManager: ObservableObject {
     }
 
     func send(_ text: String, in id: UUID) async throws {
-        // Cancel any existing task for this session
         activeTasks[id]?.cancel()
-        
         guard let idx = sessions.firstIndex(where: { $0.id == id }) else { return }
         sessions[idx].messages.append(.init(speaker: .user, text: text))
         var assistant = Message(speaker: .assistant, text: "")
@@ -60,55 +70,47 @@ final class ChatManager: ObservableObject {
         saveSessions()
 
         let manifestEntries = await manifest.all()
-        
-        guard
-            let entry = manifestEntries.first(where: { $0.id == sessions[idx].modelID })
-        else {
-            sessions[idx].messages.append(
-                .init(speaker: .assistant,
-                      text: "Selected model not downloaded.")
-            )
+        guard let entry = manifestEntries.first(where: { $0.id == sessions[idx].modelID }) else {
+            sessions[idx].messages.append(.init(speaker: .assistant, text: "Selected model not downloaded."))
             saveSessions()
             return
         }
-        
-        do {
-            let attributes = try FileManager.default.attributesOfItem(atPath: entry.localURL.path)
-        } catch {
-            print("CHAT DEBUG: Could not get file attributes: \(error)")
+
+        let engine = try engine(for: entry.localURL)
+        let prompt = buildConversationPrompt(for: sessions[idx].messages.dropLast())
+
+        let task = Task<Void, Error> {
+            do {
+                try await engine.generate(prompt: prompt, settings: self.sessions[idx].modelSettings) { token in
+                    Task { @MainActor in
+                        guard idx < self.sessions.count,
+                              self.sessions[idx].id == id,
+                              let ai = self.sessions[idx].messages.lastIndex(of: assistant) else {
+                            return
+                        }
+                        self.sessions[idx].messages[ai].text.append(token)
+                        assistant = self.sessions[idx].messages[ai]
+                    }
+                }
+            } catch is CancellationError {
+                await MainActor.run {
+                    guard idx < self.sessions.count, self.sessions[idx].id == id else { return }
+                    if let ai = self.sessions[idx].messages.lastIndex(of: assistant) {
+                        self.sessions[idx].messages[ai].text.append(" [Cancelled]")
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    guard idx < self.sessions.count, self.sessions[idx].id == id else { return }
+                    self.sessions[idx].messages.append(.init(speaker: .assistant, text: "⚠️ \(error.localizedDescription)"))
+                }
+                throw error
+            }
         }
 
-        do {
-            let engine = try engine(for: entry.localURL)
-            
-            try await engine.generate(prompt: text, settings: sessions[idx].modelSettings) { token in
-                Task { @MainActor in
-                    // Validate session still exists and index is valid
-                    guard idx < self.sessions.count,
-                          self.sessions[idx].id == id,
-                          let ai = self.sessions[idx].messages.lastIndex(of: assistant) else {
-                        return
-                    }
-                    self.sessions[idx].messages[ai].text.append(token)
-                    assistant = self.sessions[idx].messages[ai]
-                }
-            }
-        } catch is CancellationError {
-            // Handle cancellation gracefully
-            guard idx < sessions.count, sessions[idx].id == id else { return }
-            if let ai = sessions[idx].messages.lastIndex(of: assistant) {
-                sessions[idx].messages[ai].text.append(" [Cancelled]")
-            }
-        } catch {
-            guard idx < sessions.count, sessions[idx].id == id else { return }
-            sessions[idx].messages.append(.init(
-                speaker: .assistant,
-                text: "⚠️ \(error.localizedDescription)"
-            ))
-            
-            throw error
-        }
-        
+        activeTasks[id] = task
+        defer { activeTasks.removeValue(forKey: id) }
+        try await task.value
         saveSessions()
     }
 
@@ -180,8 +182,24 @@ final class ChatManager: ObservableObject {
         for i in sessions.indices where !validIDs.contains(sessions[i].modelID) {
             sessions[i].modelID = ""
         }
+        saveSessions()
     }
     
 
     var activeIndex: Int? { sessions.firstIndex { $0.id == activeID } }
+}
+
+extension ChatManager {
+    private func buildConversationPrompt(for messages: ArraySlice<Message>) -> String {
+        var parts: [String] = []
+        for message in messages.suffix(20) {
+            switch message.speaker {
+            case .user:
+                parts.append("User: \(message.text)")
+            case .assistant:
+                parts.append("Assistant: \(message.text)")
+            }
+        }
+        return parts.joined(separator: "\n\n")
+    }
 }
