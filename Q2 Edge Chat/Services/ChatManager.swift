@@ -69,14 +69,19 @@ final class ChatManager: ObservableObject {
         sessions[idx].messages.append(assistant)
         saveSessions()
 
+        await manifest.reloadFromDisk()
         let manifestEntries = await manifest.all()
-        guard let entry = manifestEntries.first(where: { $0.id == sessions[idx].modelID }) else {
+        let selectedId = sessions[idx].modelID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let entry = manifestEntries.first { $0.id.caseInsensitiveCompare(selectedId) == .orderedSame }
+        if entry == nil {
+            print("Selected modelID: \(selectedId)")
+            print("Available model IDs: \(manifestEntries.map { $0.id })")
             sessions[idx].messages.append(.init(speaker: .assistant, text: "Selected model not downloaded."))
             saveSessions()
             return
         }
 
-        let engine = try engine(for: entry.localURL)
+        let engine = try engine(for: entry!.localURL)
         let prompt = buildConversationPrompt(for: sessions[idx].messages.dropLast())
 
         let task = Task<Void, Error> {

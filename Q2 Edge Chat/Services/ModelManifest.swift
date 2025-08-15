@@ -194,4 +194,15 @@ actor ManifestStore {
         try data.write(to: fileURL, options: .atomic)
         didChange.send()                                   
     }
+
+    func reloadFromDisk() {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: fileURL.path) else { return }
+        do {
+            let data = try Data(contentsOf: fileURL)
+            let decoded = try JSONDecoder().decode([ManifestEntry].self, from: data)
+            entries = decoded
+        } catch {
+        }
+    }
 }
