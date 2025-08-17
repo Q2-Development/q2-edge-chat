@@ -22,27 +22,11 @@ struct StaffPickModel {
     
     static let staffPicks: [StaffPickModel] = [
         StaffPickModel(
-            huggingFaceId: "microsoft/Phi-3-mini-4k-instruct-gguf",
-            displayName: "Phi-3 Mini",
-            description: "Microsoft's excellent small model with strong reasoning capabilities",
-            parameterCount: "3.8B",
-            specialty: "General Chat",
-            category: "General"
-        ),
-        StaffPickModel(
             huggingFaceId: "Qwen/Qwen2-1.5B-Instruct-GGUF",
             displayName: "Qwen2 1.5B",
             description: "Efficient multilingual model with great performance-to-size ratio",
             parameterCount: "1.5B",
             specialty: "Multilingual",
-            category: "General"
-        ),
-        StaffPickModel(
-            huggingFaceId: "PY007/TinyLlama-1.1B-Chat-v0.3-gguf",
-            displayName: "TinyLlama",
-            description: "Ultra-small model perfect for testing and resource-constrained environments",
-            parameterCount: "1.1B",
-            specialty: "Lightweight",
             category: "General"
         ),
         StaffPickModel(
@@ -62,36 +46,12 @@ struct StaffPickModel {
             category: "General"
         ),
         StaffPickModel(
-            huggingFaceId: "HuggingFaceTB/SmolLM-1.7B-Instruct-GGUF",
-            displayName: "SmolLM 1.7B",
-            description: "Highly optimized small model with impressive capabilities",
-            parameterCount: "1.7B",
-            specialty: "Optimized",
-            category: "General"
-        ),
-        StaffPickModel(
-            huggingFaceId: "stabilityai/stablelm-2-1_6b-chat-gguf",
-            displayName: "StableLM 2",
-            description: "Stability AI's chat-optimized model with balanced performance",
-            parameterCount: "1.6B",
-            specialty: "Chat",
-            category: "General"
-        ),
-        StaffPickModel(
             huggingFaceId: "bartowski/CodeGemma-2b-GGUF",
             displayName: "CodeGemma 2B",
             description: "Google's coding-focused model for programming assistance",
             parameterCount: "2B",
             specialty: "Code Generation",
             category: "Coding"
-        ),
-        StaffPickModel(
-            huggingFaceId: "microsoft/Phi-3.5-mini-instruct-gguf",
-            displayName: "Phi-3.5 Mini",
-            description: "Microsoft's updated reasoning model with enhanced capabilities",
-            parameterCount: "3.8B",
-            specialty: "Reasoning",
-            category: "General"
         ),
         StaffPickModel(
             huggingFaceId: "Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF",

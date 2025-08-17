@@ -34,7 +34,7 @@ struct ModelSettingsView: View {
                         Slider(value: Binding(
                             get: { Double(settings.maxTokens) },
                             set: { settings.maxTokens = Int32($0) }
-                        ), in: 50...1000, step: 10)
+                        ), in: 50...4096, step: 10)
                         Text("Maximum response length in tokens")
                             .font(.caption)
                             .foregroundColor(.secondary)

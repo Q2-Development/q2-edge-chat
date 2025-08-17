@@ -35,9 +35,15 @@ struct ChatView: View {
                     }
                     Button("Clear Chat") {
                         session.messages.removeAll()
+                        manager.persistSessions()
                     }
                     Button("Export Chat") {
                         showingExport = true
+                    }
+                    if manager.isGenerating(session.id) {
+                        Button("Stop") {
+                            manager.cancel(session.id)
+                        }
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -86,6 +92,12 @@ struct ChatView: View {
         }
         .sheet(isPresented: $showingExport) {
             ExportChatView(session: session)
+        }
+        .onChange(of: session.modelID) { _ in
+            manager.persistSessions()
+        }
+        .onChange(of: session.modelSettings) { _ in
+            manager.persistSessions()
         }
     }
 }

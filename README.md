@@ -63,6 +63,9 @@ Q2 Edge Chat/
 
 ## Getting Started
 
+>[!NOTE]
+> This is a work in progress, some things are broken
+
 ### Prerequisites
 - iOS 18.0+ or macOS 13.0+
 - Xcode 14.0+
@@ -76,7 +79,6 @@ Q2 Edge Chat/
 
 ### Recommended Models
 The app includes curated staff picks of efficient models:
-- **Phi-3.5 Mini** (3.8B) - General conversation
 - **Qwen2.5-1.5B** (1.5B) - Fast responses
 - **SmolLM2-1.7B** (1.7B) - Code assistance
 - **TinyLlama-1.1B** (1.1B) - Ultra-lightweight option

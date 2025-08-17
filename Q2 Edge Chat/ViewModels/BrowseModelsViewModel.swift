@@ -23,6 +23,7 @@ class BrowseModelsViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     let manager = ModelManager()
     private let store: ManifestStore
+    private let downloader = DownloadManager.shared
     
     init() {
         do {
@@ -88,9 +89,8 @@ class BrowseModelsViewModel: ObservableObject {
         }
     }
 
-    func download(_ model: HFModel) async {
-        // Check if already downloading
-        guard !downloadingModels.contains(model.id) else { return }
+    func download(_ model: HFModel, token: String? = nil) async {
+        if downloader.isDownloading(model.id) { return }
         
         guard let sibling = model.siblings.first(where: {
             $0.rfilename.hasSuffix(".gguf") || $0.rfilename.hasSuffix(".bin")
@@ -105,36 +105,16 @@ class BrowseModelsViewModel: ObservableObject {
             return
         }
         
-        // Mark as downloading
-        downloadingModels.insert(model.id)
         errorMessage = nil
         
-        defer {
-            downloadingModels.remove(model.id)
-        }
-        
         do {
-            let localURL = try await manager.downloadModelFile(
-                from: url,
-                modelID: model.id,
-                filename: sibling.rfilename
-            )
-            let entry = ManifestEntry(
-                id: model.id,
-                localURL: localURL,
-                downloadedAt: Date()
-            )
-            print("🔍 DOWNLOAD DEBUG: Created ManifestEntry with localURL: \(localURL.path)")
-            try await store.add(entry)
-            await loadLocal()
+            try await downloader.startHFDownload(model: model, token: token)
         } catch {
-            errorMessage = "Failed to download \(model.id): \(error.localizedDescription)"
+            errorMessage = error.localizedDescription
         }
     }
     
-    func isDownloading(_ model: HFModel) -> Bool {
-        return downloadingModels.contains(model.id)
-    }
+    func isDownloading(_ model: HFModel) -> Bool { downloader.isDownloading(model.id) }
     
     func isDownloaded(_ model: HFModel) -> Bool {
         return localEntries.contains(where: { $0.id == model.id })
@@ -144,9 +124,7 @@ class BrowseModelsViewModel: ObservableObject {
         return localEntries.contains(where: { $0.id == staffPick.huggingFaceId })
     }
     
-    func isStaffPickDownloading(_ staffPick: StaffPickModel) -> Bool {
-        return downloadingModels.contains(staffPick.huggingFaceId)
-    }
+    func isStaffPickDownloading(_ staffPick: StaffPickModel) -> Bool { downloader.isDownloading(staffPick.huggingFaceId) }
 
     func delete(_ entry: ManifestEntry) async {
         do {

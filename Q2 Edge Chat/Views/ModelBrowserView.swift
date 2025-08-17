@@ -13,7 +13,7 @@ struct SearchBar: View {
             TextField("Search HuggingFace models...", text: $searchText)
                 .textFieldStyle(PlainTextFieldStyle())
                 .onSubmit {
-                    // Trigger search on return key
+                    isSearching = true
                 }
             
             if !searchText.isEmpty {
