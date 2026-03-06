@@ -12,7 +12,7 @@ actor FineTuneRunStore {
             create: true
         )
         self.fileURL = supportDir.appendingPathComponent(filename)
-        self.cachedRuns = try loadRunsFromDisk()
+        self.cachedRuns = try Self.loadRunsFromDisk(fileURL: self.fileURL)
     }
 
     func allRuns() -> [FineTuneRunRecord] {
@@ -51,7 +51,7 @@ actor FineTuneRunStore {
         try data.write(to: fileURL, options: .atomic)
     }
 
-    private func loadRunsFromDisk() throws -> [FineTuneRunRecord] {
+    private static func loadRunsFromDisk(fileURL: URL) throws -> [FineTuneRunRecord] {
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             return []
         }

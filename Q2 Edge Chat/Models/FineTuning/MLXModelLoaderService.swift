@@ -2,6 +2,9 @@ import Foundation
 #if canImport(MLXLLM)
 import MLXLLM
 #endif
+#if canImport(MLXLMCommon)
+import MLXLMCommon
+#endif
 
 struct LoadedModelDescriptor: Hashable {
     let identifier: String
@@ -20,17 +23,24 @@ enum MLXModelLoaderError: Error, LocalizedError {
 }
 
 struct MLXModelLoaderService {
-    func loadModelDescriptor(identifier: String) async throws -> LoadedModelDescriptor {
+    func loadModel(identifier: String) async throws -> (LoadedModelDescriptor, ModelContainer) {
         let normalized = identifier.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalized.isEmpty else {
             throw MLXModelLoaderError.invalidIdentifier
         }
 
         let isLocalPath = normalized.hasPrefix("/")
-
-        // Placeholder load path; this intentionally keeps integration build-safe
-        // while package-level MLX dependencies are linked for future expansion.
-
-        return LoadedModelDescriptor(identifier: normalized, isLocalPath: isLocalPath)
+        #if canImport(MLXLLM) && canImport(MLXLMCommon)
+        let config: ModelConfiguration
+        if isLocalPath {
+            config = ModelConfiguration(directory: URL(fileURLWithPath: normalized))
+        } else {
+            config = ModelConfiguration(id: normalized)
+        }
+        let container = try await LLMModelFactory.shared.loadContainer(configuration: config)
+        return (LoadedModelDescriptor(identifier: normalized, isLocalPath: isLocalPath), container)
+        #else
+        throw MLXModelLoaderError.invalidIdentifier
+        #endif
     }
 }
