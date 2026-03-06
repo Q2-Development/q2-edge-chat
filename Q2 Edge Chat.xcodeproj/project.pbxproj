@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		12F0A1B32F00110000A1B2C3 /* MLXLLM in Frameworks */ = {isa = PBXBuildFile; productRef = 12F0A1B22F00110000A1B2C3 /* MLXLLM */; };
+		12F0A1B52F00110000A1B2C3 /* MLXLMCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 12F0A1B42F00110000A1B2C3 /* MLXLMCommon */; };
 		132C42FE2E4333B500E24B13 /* SwiftLlama in Frameworks */ = {isa = PBXBuildFile; productRef = 132C42FD2E4333B500E24B13 /* SwiftLlama */; };
 		1371CE602E34333600209092 /* ModelManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1371CE5F2E34333400209092 /* ModelManifest.swift */; };
 		1371CE6C2E345FF700209092 /* LlamaEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1371CE612E34547700209092 /* LlamaEngine.swift */; };
@@ -98,6 +100,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				12F0A1B32F00110000A1B2C3 /* MLXLLM in Frameworks */,
+				12F0A1B52F00110000A1B2C3 /* MLXLMCommon in Frameworks */,
 				132C42FE2E4333B500E24B13 /* SwiftLlama in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -221,6 +225,8 @@
 			name = "Q2 Edge Chat";
 			packageProductDependencies = (
 				132C42FD2E4333B500E24B13 /* SwiftLlama */,
+				12F0A1B22F00110000A1B2C3 /* MLXLLM */,
+				12F0A1B42F00110000A1B2C3 /* MLXLMCommon */,
 			);
 			productName = "Q2 Edge Chat";
 			productReference = 139FBB3B2E2A1D35003EF52B /* Q2 Edge Chat.app */;
@@ -306,6 +312,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				132C42FC2E4333B500E24B13 /* XCRemoteSwiftPackageReference "QSwiftLlama" */,
+				12F0A1B12F00110000A1B2C3 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 139FBB3C2E2A1D35003EF52B /* Products */;
@@ -693,6 +700,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		12F0A1B12F00110000A1B2C3 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ml-explore/mlx-swift-lm";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 		132C42FC2E4333B500E24B13 /* XCRemoteSwiftPackageReference "QSwiftLlama" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/Q2-Development/QSwiftLlama";
@@ -704,6 +719,16 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		12F0A1B22F00110000A1B2C3 /* MLXLLM */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 12F0A1B12F00110000A1B2C3 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */;
+			productName = MLXLLM;
+		};
+		12F0A1B42F00110000A1B2C3 /* MLXLMCommon */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 12F0A1B12F00110000A1B2C3 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */;
+			productName = MLXLMCommon;
+		};
 		132C42FD2E4333B500E24B13 /* SwiftLlama */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 132C42FC2E4333B500E24B13 /* XCRemoteSwiftPackageReference "QSwiftLlama" */;

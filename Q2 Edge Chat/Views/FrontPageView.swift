@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import UniformTypeIdentifiers
 
 struct ModernButton: ButtonStyle {
     let color: Color
@@ -123,6 +124,26 @@ struct FrontPageView: View {
                             }
                         }
                         .buttonStyle(ModernButton(color: Color(.systemGray5), textColor: .primary))
+
+                        NavigationLink(destination: FineTuneView()) {
+                            HStack {
+                                Image(systemName: "slider.horizontal.3")
+                                    .font(.title3)
+                                Text("Fine-Tune Models")
+                                    .fontWeight(.semibold)
+                            }
+                        }
+                        .buttonStyle(ModernButton(color: Color.orange, textColor: .white))
+
+                        NavigationLink(destination: FineTuneRunsView()) {
+                            HStack {
+                                Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                                    .font(.title3)
+                                Text("Fine-Tune Runs")
+                                    .fontWeight(.semibold)
+                            }
+                        }
+                        .buttonStyle(ModernButton(color: Color(.systemGray5), textColor: .primary))
                     }
                     .padding(.horizontal, 20)
                     
@@ -202,5 +223,201 @@ struct FrontPageView_Previews: PreviewProvider {
             FrontPageView()
         }
         .preferredColorScheme(.dark)
+    }
+}
+
+struct FineTuneView: View {
+    @StateObject private var viewModel = FineTuneViewModel()
+    @State private var showingPicker = false
+
+    var body: some View {
+        Form {
+            Section("Model") {
+                TextField("MLX model id or local path", text: $viewModel.modelIdentifier)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+            }
+
+            Section("Dataset") {
+                Text(viewModel.datasetPath.isEmpty ? "No dataset selected" : viewModel.datasetPath)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                Button("Choose JSON/JSONL File") {
+                    showingPicker = true
+                }
+            }
+
+            Section("Method") {
+                Picker("Training Method", selection: $viewModel.selectedMethod) {
+                    ForEach(TrainingMethod.allCases) { method in
+                        Text(method.displayName).tag(method)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+
+            Section("Hyperparameters") {
+                Stepper("LoRA rank: \(viewModel.loraRank)", value: $viewModel.loraRank, in: 1...128)
+                HStack {
+                    Text("Learning rate")
+                    Spacer()
+                    TextField("0.0002", value: $viewModel.learningRate, format: .number.precision(.fractionLength(1...6)))
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 100)
+                }
+                Stepper("Steps: \(viewModel.steps)", value: $viewModel.steps, in: 10...3000, step: 10)
+                Stepper("Seq length: \(viewModel.sequenceLength)", value: $viewModel.sequenceLength, in: 64...2048, step: 64)
+                Stepper("Micro-batch: \(viewModel.microBatchSize)", value: $viewModel.microBatchSize, in: 1...8)
+            }
+
+            if viewModel.selectedMethod == .galore {
+                Section("GaLore") {
+                    Stepper("Projection update interval: \(viewModel.projectionUpdateInterval)", value: $viewModel.projectionUpdateInterval, in: 10...1000, step: 10)
+                    HStack {
+                        Text("Scale factor")
+                        Spacer()
+                        TextField("0.25", value: $viewModel.scaleFactor, format: .number.precision(.fractionLength(2)))
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 70)
+                    }
+                }
+            }
+
+            Section("Run Control") {
+                HStack(spacing: 12) {
+                    Button("Start") {
+                        viewModel.startTraining()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(viewModel.isRunning)
+
+                    Button("Stop") {
+                        viewModel.stopTraining()
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(!viewModel.isRunning)
+                }
+
+                if let progress = viewModel.latestProgress {
+                    ProgressView(value: progress.fractionComplete) {
+                        Text("Step \(progress.step)/\(progress.totalSteps)")
+                    } currentValueLabel: {
+                        Text(String(format: "%.3f loss", progress.loss))
+                    }
+                    Text("Throughput: \(Int(progress.tokensPerSecond)) tok/s")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("Peak memory estimate: \(ByteCountFormatter.string(fromByteCount: Int64(progress.estimatedPeakMemoryBytes), countStyle: .memory))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("Optimizer memory: \(ByteCountFormatter.string(fromByteCount: Int64(progress.optimizerMemoryBytes), countStyle: .memory))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if progress.method == .galore && progress.baselineOptimizerMemoryBytes > 0 {
+                        let saved = max(0, Int64(progress.baselineOptimizerMemoryBytes) - Int64(progress.optimizerMemoryBytes))
+                        let pct = (Double(saved) / Double(progress.baselineOptimizerMemoryBytes)) * 100
+                        Text(String(format: "GaLore optimizer memory reduction: %.1f%%", pct))
+                            .font(.caption)
+                            .foregroundStyle(.green)
+                    }
+                    Text("Thermal: \(progress.thermalState.rawValue)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let message = viewModel.statusMessage {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if let artifact = viewModel.lastArtifact {
+                Section("Last Artifact") {
+                    Text(artifact.adapterURL.path)
+                        .font(.caption)
+                        .lineLimit(2)
+                    if #available(iOS 16.0, *) {
+                        ShareLink(item: artifact.adapterURL) {
+                            Label("Export Adapter", systemImage: "square.and.arrow.up")
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Fine-Tune")
+        .fileImporter(
+            isPresented: $showingPicker,
+            allowedContentTypes: [UTType.json, UTType(filenameExtension: "jsonl") ?? .plainText],
+            allowsMultipleSelection: false
+        ) { result in
+            if case .success(let urls) = result, let first = urls.first {
+                viewModel.datasetPath = first.path
+            }
+        }
+    }
+}
+
+struct FineTuneRunsView: View {
+    @StateObject private var viewModel = FineTuneViewModel()
+
+    var body: some View {
+        List {
+            ForEach(viewModel.runs) { run in
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text(run.config.baseModelIdentifier)
+                            .font(.headline)
+                            .lineLimit(1)
+                        Spacer()
+                        Text(run.status.rawValue.capitalized)
+                            .font(.caption)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.blue.opacity(0.1))
+                            .cornerRadius(6)
+                    }
+
+                    Text("\(run.config.method.displayName) • rank \(run.config.loraRank) • \(run.config.steps) steps")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    if let progress = run.lastProgress {
+                        Text(String(format: "Loss %.3f • %d/%d steps", progress.loss, progress.step, progress.totalSteps))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if let artifact = run.artifact {
+                        if #available(iOS 16.0, *) {
+                            ShareLink(item: artifact.adapterURL) {
+                                Label("Export Adapter", systemImage: "square.and.arrow.up")
+                                    .font(.caption)
+                            }
+                        } else {
+                            Text(artifact.adapterURL.lastPathComponent)
+                                .font(.caption)
+                        }
+                    }
+
+                    if let errorMessage = run.errorMessage {
+                        Text(errorMessage)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                }
+                .padding(.vertical, 6)
+            }
+        }
+        .navigationTitle("Fine-Tune Runs")
+        .task {
+            await viewModel.reloadRuns()
+        }
+        .refreshable {
+            await viewModel.reloadRuns()
+        }
     }
 }
