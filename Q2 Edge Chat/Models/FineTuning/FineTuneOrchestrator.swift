@@ -53,7 +53,7 @@ actor FineTuneOrchestrator {
 
         do {
             let samples = try datasetIngest.loadSamples(from: validatedConfig.datasetURL)
-            let dataset = buildTrainingCorpus(from: samples)
+            let dataset = buildTrainingCorpus(from: samples, config: validatedConfig)
             let (trainData, validateData) = splitDataset(dataset)
 
             let (_, container) = try await modelLoader.loadModel(identifier: validatedConfig.baseModelIdentifier)
@@ -222,16 +222,33 @@ actor FineTuneOrchestrator {
         )
     }
 
-    private func buildTrainingCorpus(from samples: [TrainingSample]) -> [String] {
-        samples.map {
-            """
-            ### Instruction:
-            \($0.prompt)
+    private func buildTrainingCorpus(from samples: [TrainingSample], config: FineTuneJobConfig) -> [String] {
+        // Conservative character budget heuristic for device stability.
+        // ~4 chars/token is a common rough approximation for English text.
+        let maxChars = max(256, config.sequenceLength * 4)
+        let promptBudget = max(96, Int(Double(maxChars) * 0.65))
+        let completionBudget = max(64, maxChars - promptBudget)
 
-            ### Response:
-            \($0.completion)
-            """
+        var rows: [String] = []
+        rows.reserveCapacity(samples.count)
+
+        for sample in samples {
+            let prompt = truncated(sample.prompt, maxCharacters: promptBudget)
+            let completion = truncated(sample.completion, maxCharacters: completionBudget)
+            guard !prompt.isEmpty, !completion.isEmpty else { continue }
+
+            rows.append(
+                """
+                ### Instruction:
+                \(prompt)
+
+                ### Response:
+                \(completion)
+                """
+            )
         }
+
+        return rows
     }
 
     private func splitDataset(_ data: [String]) -> (train: [String], validate: [String]) {
@@ -242,6 +259,13 @@ actor FineTuneOrchestrator {
         let train = Array(data.prefix(split))
         let validate = Array(data.suffix(max(1, data.count - split)))
         return (train, validate)
+    }
+
+    private func truncated(_ text: String, maxCharacters: Int) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count > maxCharacters else { return trimmed }
+        let idx = trimmed.index(trimmed.startIndex, offsetBy: maxCharacters)
+        return String(trimmed[..<idx]).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     nonisolated private static func mapProgress(
