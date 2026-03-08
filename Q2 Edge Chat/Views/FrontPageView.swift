@@ -144,6 +144,16 @@ struct FrontPageView: View {
                             }
                         }
                         .buttonStyle(ModernButton(color: Color(.systemGray5), textColor: .primary))
+
+                        NavigationLink(destination: AdapterEvaluationView()) {
+                            HStack {
+                                Image(systemName: "text.magnifyingglass")
+                                    .font(.title3)
+                                Text("Evaluate Adapter")
+                                    .fontWeight(.semibold)
+                            }
+                        }
+                        .buttonStyle(ModernButton(color: Color.teal, textColor: .white))
                     }
                     .padding(.horizontal, 20)
                     
@@ -355,7 +365,7 @@ struct FineTuneView: View {
             allowsMultipleSelection: false
         ) { result in
             if case .success(let urls) = result, let first = urls.first {
-                viewModel.datasetPath = first.path
+                viewModel.importDataset(from: first)
             }
         }
     }
@@ -418,6 +428,99 @@ struct FineTuneRunsView: View {
         }
         .refreshable {
             await viewModel.reloadRuns()
+        }
+    }
+}
+
+struct AdapterEvaluationView: View {
+    @StateObject private var viewModel = AdapterEvaluationViewModel()
+    @State private var showingAdapterPicker = false
+
+    var body: some View {
+        Form {
+            Section("Model") {
+                TextField("MLX model id or local path", text: $viewModel.modelIdentifier)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+            }
+
+            Section("Adapter") {
+                Text(viewModel.adapterPath.isEmpty ? "No adapter selected" : viewModel.adapterPath)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                Button("Choose .safetensors") {
+                    showingAdapterPicker = true
+                }
+            }
+
+            Section("Prompt") {
+                TextEditor(text: $viewModel.prompt)
+                    .frame(minHeight: 90)
+            }
+
+            Section("Generation") {
+                Stepper("Max tokens: \(viewModel.maxTokens)", value: $viewModel.maxTokens, in: 16...512, step: 16)
+                HStack {
+                    Text("Temperature")
+                    Spacer()
+                    TextField("0.2", value: $viewModel.temperature, format: .number.precision(.fractionLength(1...2)))
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 80)
+                }
+            }
+
+            Section("Run") {
+                Button {
+                    viewModel.runComparison()
+                } label: {
+                    HStack {
+                        if viewModel.isRunning {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+                        Text(viewModel.isRunning ? "Running..." : "Compare Base vs Adapter")
+                    }
+                }
+                .disabled(viewModel.isRunning)
+
+                if let status = viewModel.statusMessage {
+                    Text(status)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if !viewModel.baseOutput.isEmpty || !viewModel.adaptedOutput.isEmpty {
+                Section("Base Output") {
+                    ScrollView {
+                        Text(viewModel.baseOutput.isEmpty ? "No output yet." : viewModel.baseOutput)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .font(.body.monospaced())
+                    }
+                    .frame(minHeight: 120)
+                }
+
+                Section("Adapter Output") {
+                    ScrollView {
+                        Text(viewModel.adaptedOutput.isEmpty ? "No output yet." : viewModel.adaptedOutput)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .font(.body.monospaced())
+                    }
+                    .frame(minHeight: 120)
+                }
+            }
+        }
+        .navigationTitle("Adapter Eval")
+        .fileImporter(
+            isPresented: $showingAdapterPicker,
+            allowedContentTypes: [UTType(filenameExtension: "safetensors") ?? .data],
+            allowsMultipleSelection: false
+        ) { result in
+            if case .success(let urls) = result, let first = urls.first {
+                viewModel.importAdapter(from: first)
+            }
         }
     }
 }

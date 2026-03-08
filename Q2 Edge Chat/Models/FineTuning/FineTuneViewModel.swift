@@ -21,6 +21,7 @@ final class FineTuneViewModel: ObservableObject {
     @Published var lastArtifact: FineTuneArtifact?
 
     private let orchestrator: FineTuneOrchestrator
+    private let fileManager = FileManager.default
 
     init(orchestrator: FineTuneOrchestrator? = nil) {
         self.orchestrator = orchestrator ?? FineTuneViewModel.makeDefaultOrchestrator()
@@ -77,6 +78,16 @@ final class FineTuneViewModel: ObservableObject {
         }
     }
 
+    func importDataset(from pickedURL: URL) {
+        do {
+            let copiedURL = try copyDatasetIntoAppSupport(from: pickedURL)
+            datasetPath = copiedURL.path
+            statusMessage = "Dataset imported: \(copiedURL.lastPathComponent)"
+        } catch {
+            statusMessage = "Failed to import dataset: \(error.localizedDescription)"
+        }
+    }
+
     func stopTraining() {
         Task {
             await orchestrator.stop()
@@ -111,4 +122,35 @@ private enum InMemoryFallback {
         }
         fatalError("Unable to initialize FineTuneRunStore")
     }()
+}
+
+private extension FineTuneViewModel {
+    func copyDatasetIntoAppSupport(from sourceURL: URL) throws -> URL {
+        let accessed = sourceURL.startAccessingSecurityScopedResource()
+        defer {
+            if accessed {
+                sourceURL.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        let supportDir = try fileManager.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+        let datasetsDir = supportDir.appendingPathComponent("FineTuneDatasets", isDirectory: true)
+        try fileManager.createDirectory(at: datasetsDir, withIntermediateDirectories: true)
+
+        let ext = sourceURL.pathExtension.isEmpty ? "jsonl" : sourceURL.pathExtension
+        let base = sourceURL.deletingPathExtension().lastPathComponent
+        let stamp = Int(Date().timeIntervalSince1970)
+        let destinationURL = datasetsDir.appendingPathComponent("\(base)_\(stamp).\(ext)")
+
+        if fileManager.fileExists(atPath: destinationURL.path) {
+            try fileManager.removeItem(at: destinationURL)
+        }
+        try fileManager.copyItem(at: sourceURL, to: destinationURL)
+        return destinationURL
+    }
 }
