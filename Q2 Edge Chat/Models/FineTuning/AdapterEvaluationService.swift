@@ -53,6 +53,8 @@ struct AdapterEvaluationService {
         }
 
         #if canImport(MLX) && canImport(MLXLLM) && canImport(MLXLMCommon)
+        defer { Self.releaseEvaluationMemory() }
+
         let (_, baseContainer) = try await loader.loadModel(identifier: modelIdentifier)
         let baseOutput = try await generate(
             with: baseContainer,
@@ -123,6 +125,10 @@ struct AdapterEvaluationService {
             fineTuneType: .lora,
             loraParameters: .init(rank: 8, scale: 10, keys: nil)
         )
+    }
+
+    private static func releaseEvaluationMemory() {
+        MLX.Memory.clearCache()
     }
     #endif
 }

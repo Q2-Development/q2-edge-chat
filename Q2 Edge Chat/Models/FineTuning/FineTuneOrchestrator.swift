@@ -38,6 +38,7 @@ actor FineTuneOrchestrator {
         let runID = validatedConfig.id
         activeRunID = runID
         control.reset()
+        defer { releaseTrainingResources() }
 
         var record = FineTuneRunRecord(
             id: runID,
@@ -170,7 +171,6 @@ actor FineTuneOrchestrator {
             record.lastProgress = trainState.latestProgress()
             record.artifact = artifact
             try await runStore.upsert(record)
-            activeRunID = nil
             return artifact
 
         } catch {
@@ -178,7 +178,6 @@ actor FineTuneOrchestrator {
             record.finishedAt = Date()
             record.errorMessage = error.localizedDescription
             try? await runStore.upsert(record)
-            activeRunID = nil
             throw error
         }
         #else
@@ -192,6 +191,14 @@ actor FineTuneOrchestrator {
 
     func runs() async -> [FineTuneRunRecord] {
         await runStore.allRuns()
+    }
+
+    private func releaseTrainingResources() {
+        activeRunID = nil
+        control.reset()
+        #if canImport(MLX)
+        MLX.Memory.clearCache()
+        #endif
     }
 
     private func finalizeArtifact(runID: UUID, config: FineTuneJobConfig) async throws -> FineTuneArtifact {
@@ -504,14 +511,6 @@ enum FineTuneOrchestratorError: Error, LocalizedError, Equatable {
 }
 
 #if canImport(MLX) && canImport(MLXNN) && canImport(MLXOptimizers)
-private struct GaLoreSubspace {
-    let u: MLXArray
-    let vt: MLXArray
-    let rows: Int
-    let cols: Int
-    let rank: Int
-}
-
 private struct GaLoreRuntimeStats: Sendable {
     let approximateProjectedOptimizerMemoryBytes: UInt64
     let approximateFullOptimizerMemoryBytes: UInt64
@@ -519,29 +518,64 @@ private struct GaLoreRuntimeStats: Sendable {
 }
 
 private final class GaLoreProjectedAdam: Optimizer {
-    private let adam: Adam
+    private enum ProjectionMode {
+        case full
+        case left
+        case right
+    }
+
+    private struct ParameterState {
+        var step: Int
+        var mode: ProjectionMode
+        var rows: Int
+        var cols: Int
+        var rank: Int
+        var basis: MLXArray?
+        var m: MLXArray
+        var v: MLXArray
+    }
+
     private let rank: Int
     private let projectionUpdateInterval: Int
     private let scaleFactor: Float
+    private let learningRate: Float
+    private let betas: (Float, Float)
+    private let eps: Float
 
     private let lock = NSLock()
-    private var step: Int = 0
-    private var cachedSubspaces: [String: GaLoreSubspace] = [:]
+    private var states: [String: ParameterState] = [:]
     private var stats = GaLoreRuntimeStats(
         approximateProjectedOptimizerMemoryBytes: 0,
         approximateFullOptimizerMemoryBytes: 0,
         projectionRefreshed: false
     )
 
-    init(learningRate: Float, rank: Int, projectionUpdateInterval: Int, scaleFactor: Float) {
-        self.adam = Adam(learningRate: learningRate)
+    init(
+        learningRate: Float,
+        rank: Int,
+        projectionUpdateInterval: Int,
+        scaleFactor: Float,
+        betas: (Float, Float) = (0.9, 0.999),
+        eps: Float = 1e-8
+    ) {
+        self.learningRate = learningRate
         self.rank = max(1, rank)
         self.projectionUpdateInterval = max(1, projectionUpdateInterval)
         self.scaleFactor = max(0.0001, min(scaleFactor, 1.0))
+        self.betas = betas
+        self.eps = max(eps, 1e-12)
     }
 
     func innerState() -> [MLXArray] {
-        adam.innerState()
+        lock.lock()
+        let arrays = states.values.flatMap { state -> [MLXArray] in
+            if let basis = state.basis {
+                return [state.m, state.v, basis]
+            }
+            return [state.m, state.v]
+        }
+        lock.unlock()
+        return arrays
     }
 
     func runtimeStats() -> GaLoreRuntimeStats {
@@ -552,88 +586,183 @@ private final class GaLoreProjectedAdam: Optimizer {
     }
 
     func update(model: Module, gradients: ModuleParameters) {
+        let gradientPairs = gradients.flattened()
+        guard !gradientPairs.isEmpty else { return }
+
+        let modelParameters = model.parameters()
+        let modelParameterMap = Dictionary(uniqueKeysWithValues: modelParameters.flattened())
+
+        let (b1, b2) = betas
+
         lock.lock()
-        step += 1
-        let currentStep = step
-        let refreshProjection = currentStep == 1 || (currentStep - 1) % projectionUpdateInterval == 0
-        lock.unlock()
+
+        var updatedParameters: [(String, MLXArray)] = []
+        updatedParameters.reserveCapacity(gradientPairs.count)
 
         var fullOptimizerElements = 0
         var projectedOptimizerElements = 0
+        var projectionRefreshed = false
 
-        let projectedGradients = gradients.mapValues { key, gradient in
-            let g = gradient.asType(.float32)
+        for (key, gradientRaw) in gradientPairs {
+            guard let parameter = modelParameterMap[key] else { continue }
+
+            let g = gradientRaw.asType(.float32)
+            let parameter32 = parameter.asType(.float32)
             fullOptimizerElements += max(1, g.size)
 
-            guard g.shape.count >= 2 else {
-                projectedOptimizerElements += max(1, min(rank, g.size))
-                return g * scaleFactor
+            let shape = g.shape
+            let hasMatrixShape = shape.count >= 2
+            let rows = hasMatrixShape ? max(1, g.dim(0)) : max(1, g.size)
+            let cols = hasMatrixShape ? max(1, g.size / rows) : 1
+
+            if !hasMatrixShape {
+                var state = states[key] ?? ParameterState(
+                    step: 0,
+                    mode: .full,
+                    rows: rows,
+                    cols: cols,
+                    rank: 0,
+                    basis: nil,
+                    m: MLXArray.zeros(like: g),
+                    v: MLXArray.zeros(like: g)
+                )
+
+                if state.mode != .full || state.m.shape != g.shape {
+                    state = ParameterState(
+                        step: 0,
+                        mode: .full,
+                        rows: rows,
+                        cols: cols,
+                        rank: 0,
+                        basis: nil,
+                        m: MLXArray.zeros(like: g),
+                        v: MLXArray.zeros(like: g)
+                    )
+                }
+
+                state.step += 1
+                state.m = b1 * state.m + (1 - b1) * g
+                state.v = b2 * state.v + (1 - b2) * square(g)
+
+                let update = state.m / (sqrt(state.v) + eps)
+                let nextParam = (parameter32 - (learningRate * scaleFactor) * update).asType(parameter.dtype)
+
+                states[key] = state
+                projectedOptimizerElements += max(1, state.m.size + state.v.size)
+                updatedParameters.append((key, nextParam))
+                continue
             }
 
-            let rows = max(1, g.dim(0))
-            let cols = max(1, g.size / rows)
             let matrix = g.reshaped(rows, cols)
-            let subspace = self.subspace(
-                for: key,
-                matrix: matrix,
+            let r = max(1, min(rank, min(rows, cols)))
+            let mode: ProjectionMode = rows <= cols ? .right : .left
+
+            var state = states[key] ?? ParameterState(
+                step: 0,
+                mode: mode,
                 rows: rows,
                 cols: cols,
-                refresh: refreshProjection
+                rank: r,
+                basis: nil,
+                m: MLXArray(0),
+                v: MLXArray(0)
             )
 
-            projectedOptimizerElements += max(1, subspace.rank * (subspace.rows + subspace.cols))
+            let stateMismatch = state.mode != mode || state.rows != rows || state.cols != cols || state.rank != r || state.basis == nil
+            if stateMismatch {
+                let projectedShape: [Int]
+                switch mode {
+                case .right:
+                    projectedShape = [rows, r]
+                case .left:
+                    projectedShape = [r, cols]
+                case .full:
+                    projectedShape = g.shape
+                }
+                state = ParameterState(
+                    step: 0,
+                    mode: mode,
+                    rows: rows,
+                    cols: cols,
+                    rank: r,
+                    basis: nil,
+                    m: MLXArray.zeros(projectedShape, dtype: .float32),
+                    v: MLXArray.zeros(projectedShape, dtype: .float32)
+                )
+            }
 
-            let projected = self.project(matrix: matrix, subspace: subspace)
-            return projected.reshaped(g.shape) * scaleFactor
+            state.step += 1
+            let needsRefresh = state.basis == nil || state.step == 1 || (state.step - 1) % projectionUpdateInterval == 0
+            if needsRefresh {
+                // MLX does not currently support GPU SVD; compute on CPU.
+                let (u, _, vt) = svd(matrix, stream: .cpu)
+                switch mode {
+                case .right:
+                    state.basis = vt[0..<r, 0...].transposed().asType(.float32, stream: .gpu)  // [cols, r]
+                case .left:
+                    state.basis = u[0..., 0..<r].asType(.float32, stream: .gpu)  // [rows, r]
+                case .full:
+                    state.basis = nil
+                }
+                projectionRefreshed = true
+            }
+
+            guard let basis = state.basis else {
+                let fallbackUpdate = matrix * (learningRate * scaleFactor)
+                let nextParam = (parameter32 - fallbackUpdate.reshaped(parameter.shape)).asType(parameter.dtype)
+                states[key] = state
+                updatedParameters.append((key, nextParam))
+                continue
+            }
+
+            let projectedGradient: MLXArray
+            let projectedUpdate: MLXArray
+            let fullUpdate: MLXArray
+
+            switch mode {
+            case .right:
+                projectedGradient = matmul(matrix, basis)  // [rows, r]
+                state.m = b1 * state.m + (1 - b1) * projectedGradient
+                state.v = b2 * state.v + (1 - b2) * square(projectedGradient)
+                projectedUpdate = state.m / (sqrt(state.v) + eps)
+                fullUpdate = matmul(projectedUpdate, basis.transposed())  // [rows, cols]
+            case .left:
+                projectedGradient = matmul(basis.transposed(), matrix)  // [r, cols]
+                state.m = b1 * state.m + (1 - b1) * projectedGradient
+                state.v = b2 * state.v + (1 - b2) * square(projectedGradient)
+                projectedUpdate = state.m / (sqrt(state.v) + eps)
+                fullUpdate = matmul(basis, projectedUpdate)  // [rows, cols]
+            case .full:
+                projectedGradient = matrix
+                projectedUpdate = matrix
+                fullUpdate = matrix
+            }
+
+            let nextMatrix = parameter32.reshaped(rows, cols) - (learningRate * scaleFactor) * fullUpdate
+            let nextParam = nextMatrix.reshaped(parameter.shape).asType(parameter.dtype)
+
+            states[key] = state
+            projectedOptimizerElements += max(1, state.m.size + state.v.size + basis.size)
+            updatedParameters.append((key, nextParam))
         }
 
-        adam.update(model: model, gradients: projectedGradients)
-        eval(adam)
+        lock.unlock()
 
         let fullBytes = UInt64(max(1, fullOptimizerElements) * MemoryLayout<Float>.size * 2)
-        let projectedBytes = UInt64(max(1, projectedOptimizerElements) * MemoryLayout<Float>.size * 2)
+        let projectedBytes = UInt64(max(1, projectedOptimizerElements) * MemoryLayout<Float>.size)
 
         lock.lock()
         stats = GaLoreRuntimeStats(
             approximateProjectedOptimizerMemoryBytes: projectedBytes,
             approximateFullOptimizerMemoryBytes: fullBytes,
-            projectionRefreshed: refreshProjection
+            projectionRefreshed: projectionRefreshed
         )
         lock.unlock()
-    }
 
-    private func subspace(
-        for key: String,
-        matrix: MLXArray,
-        rows: Int,
-        cols: Int,
-        refresh: Bool
-    ) -> GaLoreSubspace {
-        lock.lock()
-        if !refresh, let cached = cachedSubspaces[key] {
-            lock.unlock()
-            return cached
+        if !updatedParameters.isEmpty {
+            model.update(parameters: ModuleParameters.unflattened(updatedParameters))
+            eval(model)
         }
-        lock.unlock()
-
-        let k = max(1, min(rank, min(rows, cols)))
-        let (u, _, vt) = svd(matrix)
-        let uK = u[0..., 0..<k]
-        let vtK = vt[0..<k, 0...]
-        let subspace = GaLoreSubspace(u: uK, vt: vtK, rows: rows, cols: cols, rank: k)
-
-        lock.lock()
-        cachedSubspaces[key] = subspace
-        lock.unlock()
-
-        return subspace
-    }
-
-    private func project(matrix: MLXArray, subspace: GaLoreSubspace) -> MLXArray {
-        let uT = subspace.u.transposed()
-        let v = subspace.vt.transposed()
-        let inner = matmul(uT, matmul(matrix, v))
-        return matmul(subspace.u, matmul(inner, subspace.vt))
     }
 }
 #endif
