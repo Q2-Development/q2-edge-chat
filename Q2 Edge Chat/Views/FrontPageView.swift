@@ -246,6 +246,9 @@ struct FineTuneView: View {
                 TextField("MLX model id or local path", text: $viewModel.modelIdentifier)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+                Text("Use a quantized MLX model id for iPhone, for example `mlx-community/Qwen2.5-0.5B-Instruct-4bit`.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
 
             Section("Dataset") {
@@ -260,15 +263,18 @@ struct FineTuneView: View {
 
             Section("Method") {
                 Picker("Training Method", selection: $viewModel.selectedMethod) {
-                    ForEach(TrainingMethod.allCases) { method in
+                    ForEach(TrainingMethod.selectableCases) { method in
                         Text(method.displayName).tag(method)
                     }
                 }
                 .pickerStyle(.segmented)
+                Text(viewModel.selectedMethod.detailText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section("Hyperparameters") {
-                Stepper("LoRA rank: \(viewModel.loraRank)", value: $viewModel.loraRank, in: 1...128)
+                Stepper("Adapter rank: \(viewModel.loraRank)", value: $viewModel.loraRank, in: 1...128)
                 HStack {
                     Text("Learning rate")
                     Spacer()
@@ -280,9 +286,12 @@ struct FineTuneView: View {
                 Stepper("Steps: \(viewModel.steps)", value: $viewModel.steps, in: 10...3000, step: 10)
                 Stepper("Seq length: \(viewModel.sequenceLength)", value: $viewModel.sequenceLength, in: 64...2048, step: 64)
                 Stepper("Micro-batch: \(viewModel.microBatchSize)", value: $viewModel.microBatchSize, in: 1...8)
+                Text("iPhone safety profile is enforced at runtime (2.2 GB budget): micro-batch 1, quantized MLX base preferred, adapter rank <= 8, seq length <= 128.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
 
-            if viewModel.selectedMethod == .galore {
+            if viewModel.selectedMethod.usesProjectedOptimizerResearchPath {
                 Section("GaLore") {
                     Stepper("Projection update interval: \(viewModel.projectionUpdateInterval)", value: $viewModel.projectionUpdateInterval, in: 10...1000, step: 10)
                     HStack {
@@ -326,10 +335,10 @@ struct FineTuneView: View {
                     Text("Optimizer memory: \(ByteCountFormatter.string(fromByteCount: Int64(progress.optimizerMemoryBytes), countStyle: .memory))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    if progress.method == .galore && progress.baselineOptimizerMemoryBytes > 0 {
+                    if progress.method.usesProjectedOptimizerResearchPath && progress.baselineOptimizerMemoryBytes > 0 {
                         let saved = max(0, Int64(progress.baselineOptimizerMemoryBytes) - Int64(progress.optimizerMemoryBytes))
                         let pct = (Double(saved) / Double(progress.baselineOptimizerMemoryBytes)) * 100
-                        Text(String(format: "GaLore optimizer memory reduction: %.1f%%", pct))
+                        Text(String(format: "Projected optimizer memory reduction: %.1f%%", pct))
                             .font(.caption)
                             .foregroundStyle(.green)
                     }

@@ -35,14 +35,22 @@ actor FineTuneOrchestrator {
 
         #if canImport(MLXLLM) && canImport(MLXLMCommon) && canImport(MLXOptimizers)
         let validatedConfig = try config.validated()
-        let runID = validatedConfig.id
+        if let modelBillions = validatedConfig.estimatedModelBillions(),
+           modelBillions > FineTuneMemoryPolicy.maxSupportedModelBillions {
+            let limit = String(format: "%.1fB", FineTuneMemoryPolicy.maxSupportedModelBillions)
+            throw FineTuneOrchestratorError.trainingUnavailable("Model appears to be \(modelBillions)B. Under the 2.2GB iPhone safety profile, use a model at or below \(limit).")
+        }
+
+        let safety = validatedConfig.applyingMemorySafetyPolicy()
+        let effectiveConfig = safety.config
+        let runID = effectiveConfig.id
         activeRunID = runID
         control.reset()
         defer { releaseTrainingResources() }
 
         var record = FineTuneRunRecord(
             id: runID,
-            config: validatedConfig,
+            config: effectiveConfig,
             status: .queued,
             startedAt: Date(),
             finishedAt: nil,
@@ -52,12 +60,55 @@ actor FineTuneOrchestrator {
         )
         try await runStore.upsert(record)
 
+        if !safety.notes.isEmpty {
+            let message = "Applied iPhone memory safety profile: \(safety.notes.joined(separator: " "))"
+            let snapshot = guardrails.snapshot()
+            progress(
+                FineTuneProgress(
+                    runID: runID,
+                    step: 0,
+                    totalSteps: effectiveConfig.steps,
+                    loss: 0,
+                    tokensPerSecond: 0,
+                    estimatedPeakMemoryBytes: snapshot.residentMemoryBytes,
+                    optimizerMemoryBytes: 0,
+                    baselineOptimizerMemoryBytes: 0,
+                    thermalState: snapshot.thermalState,
+                    status: .queued,
+                    message: message,
+                    method: effectiveConfig.method,
+                    timestamp: Date()
+                )
+            )
+        }
+
+        if effectiveConfig.method == .galore {
+            let snapshot = guardrails.snapshot()
+            progress(
+                FineTuneProgress(
+                    runID: runID,
+                    step: 0,
+                    totalSteps: effectiveConfig.steps,
+                    loss: 0,
+                    tokensPerSecond: 0,
+                    estimatedPeakMemoryBytes: snapshot.residentMemoryBytes,
+                    optimizerMemoryBytes: 0,
+                    baselineOptimizerMemoryBytes: 0,
+                    thermalState: snapshot.thermalState,
+                    status: .queued,
+                    message: "Experimental GaLore mode only projects adapter gradients in this app. Use QLoRA or DoRA for production on iPhone.",
+                    method: effectiveConfig.method,
+                    timestamp: Date()
+                )
+            )
+        }
+
         do {
-            let corpus = try datasetIngest.loadTrainingCorpus(from: validatedConfig.datasetURL, config: validatedConfig)
+            let corpus = try datasetIngest.loadTrainingCorpus(from: effectiveConfig.datasetURL, config: effectiveConfig)
             let trainData = corpus.train
             let validateData = corpus.validate
 
-            let (_, container) = try await modelLoader.loadModel(identifier: validatedConfig.baseModelIdentifier)
+            let (_, container) = try await modelLoader.loadModel(identifier: effectiveConfig.baseModelIdentifier)
 
             record.status = .running
             try await runStore.upsert(record)
@@ -65,7 +116,7 @@ actor FineTuneOrchestrator {
             let adapterDirectory = try await runStore.adapterDirectory(for: runID)
             let weightsURL = adapterDirectory.appendingPathComponent("adapters.safetensors")
 
-            let trainState = FineTuneTrainState(config: validatedConfig)
+            let trainState = FineTuneTrainState(config: effectiveConfig)
 
             try await container.perform { [weak self] context in
                 guard let self else { return }
@@ -76,39 +127,46 @@ actor FineTuneOrchestrator {
                     throw FineTuneOrchestratorError.trainingUnavailable("Loaded model does not expose LoRA layers.")
                 }
 
-                let configuredLayers = min(max(1, validatedConfig.loraRank * 2), loRAModel.loraLayers.count)
+                let configuredLayers = min(max(1, effectiveConfig.loraRank * 2), loRAModel.loraLayers.count)
+                let fineTuneType: LoRAConfiguration.FineTuneType
+                switch effectiveConfig.method {
+                case .dora:
+                    fineTuneType = .dora
+                case .lora, .qlora, .galore:
+                    fineTuneType = .lora
+                }
                 let adapterConfig = LoRAConfiguration(
                     numLayers: configuredLayers,
-                    fineTuneType: .lora,
-                    loraParameters: .init(rank: validatedConfig.loraRank, scale: Float(validatedConfig.scaleFactor * 40.0), keys: nil)
+                    fineTuneType: fineTuneType,
+                    loraParameters: .init(rank: effectiveConfig.loraRank, scale: Float(effectiveConfig.scaleFactor * 40.0), keys: nil)
                 )
 
                 _ = try LoRAContainer.from(model: languageModel, configuration: adapterConfig)
 
                 let optimizer: Optimizer
                 let gaLoreOptimizer: GaLoreProjectedAdam?
-                if validatedConfig.method == .galore {
+                if effectiveConfig.method.usesProjectedOptimizerResearchPath {
                     let projected = GaLoreProjectedAdam(
-                        learningRate: Float(validatedConfig.learningRate),
-                        rank: validatedConfig.loraRank,
-                        projectionUpdateInterval: validatedConfig.projectionUpdateInterval,
-                        scaleFactor: Float(validatedConfig.scaleFactor)
+                        learningRate: Float(effectiveConfig.learningRate),
+                        rank: effectiveConfig.loraRank,
+                        projectionUpdateInterval: effectiveConfig.projectionUpdateInterval,
+                        scaleFactor: Float(effectiveConfig.scaleFactor)
                     )
                     optimizer = projected
                     gaLoreOptimizer = projected
                 } else {
-                    let adam = Adam(learningRate: Float(validatedConfig.learningRate))
+                    let adam = Adam(learningRate: Float(effectiveConfig.learningRate))
                     optimizer = adam
                     gaLoreOptimizer = nil
                 }
 
                 let params = LoRATrain.Parameters(
-                    batchSize: validatedConfig.microBatchSize,
-                    iterations: validatedConfig.steps,
+                    batchSize: effectiveConfig.microBatchSize,
+                    iterations: effectiveConfig.steps,
                     stepsPerReport: 1,
-                    stepsPerEval: max(5, validatedConfig.steps / 10),
-                    validationBatches: min(10, max(1, validateData.count / max(1, validatedConfig.microBatchSize))),
-                    saveEvery: max(25, validatedConfig.steps),
+                    stepsPerEval: max(10, effectiveConfig.steps / 8),
+                    validationBatches: min(2, max(1, validateData.count / max(1, effectiveConfig.microBatchSize))),
+                    saveEvery: max(25, effectiveConfig.steps),
                     adapterURL: weightsURL
                 )
 
@@ -135,7 +193,7 @@ actor FineTuneOrchestrator {
                     let mapped = FineTuneOrchestrator.mapProgress(
                         loRAProgress,
                         runID: runID,
-                        config: validatedConfig,
+                        config: effectiveConfig,
                         snapshot: snapshot,
                         state: trainState,
                         gaLoreStats: gaLoreOptimizer?.runtimeStats(),
@@ -165,11 +223,12 @@ actor FineTuneOrchestrator {
                 throw FineTuneOrchestratorError.cancelled
             }
 
-            let artifact = try await finalizeArtifact(runID: runID, config: validatedConfig)
+            let artifact = try await finalizeArtifact(runID: runID, config: effectiveConfig)
             record.status = .completed
             record.finishedAt = Date()
             record.lastProgress = trainState.latestProgress()
             record.artifact = artifact
+            record.config = effectiveConfig
             try await runStore.upsert(record)
             return artifact
 
@@ -247,9 +306,11 @@ actor FineTuneOrchestrator {
             let defaultBaseline = max(fallbackBaseline, UInt64(config.sequenceLength * 16 * MemoryLayout<Double>.size * 2))
             let baseline = gaLoreStats?.approximateFullOptimizerMemoryBytes ?? defaultBaseline
             let optimizerMemory = gaLoreStats?.approximateProjectedOptimizerMemoryBytes
-                ?? (config.method == .galore ? UInt64(Double(defaultBaseline) * max(0.1, min(config.scaleFactor, 1.0))) : defaultBaseline)
+                ?? (config.method.usesProjectedOptimizerResearchPath ? UInt64(Double(defaultBaseline) * max(0.1, min(config.scaleFactor, 1.0))) : defaultBaseline)
             let stepMessage: String
-            if let gaLoreStats, config.method == .galore, gaLoreStats.projectionRefreshed {
+            if let gaLoreStats, config.method.usesProjectedOptimizerResearchPath, gaLoreStats.svdFallbackCount > 0 {
+                stepMessage = messageOverride ?? "Training step \(step) (projection fallback on \(gaLoreStats.svdFallbackCount) tensor(s))"
+            } else if let gaLoreStats, config.method.usesProjectedOptimizerResearchPath, gaLoreStats.projectionRefreshed {
                 stepMessage = messageOverride ?? "Training step \(step) (projection refresh)"
             } else {
                 stepMessage = messageOverride ?? "Training step \(step)"
@@ -382,7 +443,7 @@ private final class FineTuneTrainState: @unchecked Sendable {
     init(config: FineTuneJobConfig) {
         let baseline = UInt64(max(1, config.sequenceLength * 16 * MemoryLayout<Double>.size * 2))
         self.lastBaselineOptimizerMemoryBytesValue = baseline
-        self.lastOptimizerMemoryBytesValue = config.method == .galore
+        self.lastOptimizerMemoryBytesValue = config.method.usesProjectedOptimizerResearchPath
             ? UInt64(Double(baseline) * max(0.1, min(config.scaleFactor, 1.0)))
             : baseline
     }
@@ -469,6 +530,7 @@ private struct GaLoreRuntimeStats: Sendable {
     let approximateProjectedOptimizerMemoryBytes: UInt64
     let approximateFullOptimizerMemoryBytes: UInt64
     let projectionRefreshed: Bool
+    let svdFallbackCount: Int
 }
 
 private final class GaLoreProjectedAdam: Optimizer {
@@ -495,13 +557,15 @@ private final class GaLoreProjectedAdam: Optimizer {
     private let learningRate: Float
     private let betas: (Float, Float)
     private let eps: Float
+    private let svdProvider: @Sendable (MLXArray) throws -> (MLXArray, MLXArray, MLXArray)
 
     private let lock = NSLock()
     private var states: [String: ParameterState] = [:]
     private var stats = GaLoreRuntimeStats(
         approximateProjectedOptimizerMemoryBytes: 0,
         approximateFullOptimizerMemoryBytes: 0,
-        projectionRefreshed: false
+        projectionRefreshed: false,
+        svdFallbackCount: 0
     )
 
     init(
@@ -510,7 +574,10 @@ private final class GaLoreProjectedAdam: Optimizer {
         projectionUpdateInterval: Int,
         scaleFactor: Float,
         betas: (Float, Float) = (0.9, 0.999),
-        eps: Float = 1e-8
+        eps: Float = 1e-8,
+        svdProvider: @escaping @Sendable (MLXArray) throws -> (MLXArray, MLXArray, MLXArray) = { matrix in
+            svd(matrix, stream: .cpu)
+        }
     ) {
         self.learningRate = learningRate
         self.rank = max(1, rank)
@@ -518,6 +585,7 @@ private final class GaLoreProjectedAdam: Optimizer {
         self.scaleFactor = max(0.0001, min(scaleFactor, 1.0))
         self.betas = betas
         self.eps = max(eps, 1e-12)
+        self.svdProvider = svdProvider
     }
 
     func innerState() -> [MLXArray] {
@@ -556,6 +624,7 @@ private final class GaLoreProjectedAdam: Optimizer {
         var fullOptimizerElements = 0
         var projectedOptimizerElements = 0
         var projectionRefreshed = false
+        var svdFallbackCount = 0
 
         for (key, gradientRaw) in gradientPairs {
             guard let parameter = modelParameterMap[key] else { continue }
@@ -622,7 +691,7 @@ private final class GaLoreProjectedAdam: Optimizer {
                 v: MLXArray(0)
             )
 
-            let stateMismatch = state.mode != mode || state.rows != rows || state.cols != cols || state.rank != r || state.basis == nil
+            let stateMismatch = state.mode != mode || state.rows != rows || state.cols != cols || state.rank != r
             if stateMismatch {
                 let projectedShape: [Int]
                 switch mode {
@@ -647,24 +716,60 @@ private final class GaLoreProjectedAdam: Optimizer {
 
             state.step += 1
             let needsRefresh = state.basis == nil || state.step == 1 || (state.step - 1) % projectionUpdateInterval == 0
+            var useFullFallbackForStep = false
             if needsRefresh {
                 // MLX does not currently support GPU SVD; compute on CPU.
-                let (u, _, vt) = svd(matrix, stream: .cpu)
-                switch mode {
-                case .right:
-                    state.basis = vt[0..<r, 0...].transposed().asType(.float32, stream: .gpu)  // [cols, r]
-                case .left:
-                    state.basis = u[0..., 0..<r].asType(.float32, stream: .gpu)  // [rows, r]
-                case .full:
+                do {
+                    let (u, _, vt) = try svdProvider(matrix)
+                    switch mode {
+                    case .right:
+                        state.basis = vt[0..<r, 0...].transposed().asType(.float32, stream: .gpu)  // [cols, r]
+                    case .left:
+                        state.basis = u[0..., 0..<r].asType(.float32, stream: .gpu)  // [rows, r]
+                    case .full:
+                        state.basis = nil
+                    }
+                    projectionRefreshed = true
+                } catch {
+                    // Keep training alive: skip refresh and use a full-space update for this tensor this step.
                     state.basis = nil
+                    useFullFallbackForStep = true
+                    svdFallbackCount += 1
                 }
-                projectionRefreshed = true
+            }
+
+            if useFullFallbackForStep {
+                if state.m.shape != matrix.shape || state.v.shape != matrix.shape {
+                    state.m = MLXArray.zeros([rows, cols], dtype: .float32)
+                    state.v = MLXArray.zeros([rows, cols], dtype: .float32)
+                }
+                state.m = b1 * state.m + (1 - b1) * matrix
+                state.v = b2 * state.v + (1 - b2) * square(matrix)
+
+                let fullUpdate = state.m / (sqrt(state.v) + eps)
+                let nextMatrix = parameter32.reshaped(rows, cols) - (learningRate * scaleFactor) * fullUpdate
+                let nextParam = nextMatrix.reshaped(parameter.shape).asType(parameter.dtype)
+
+                states[key] = state
+                projectedOptimizerElements += max(1, state.m.size + state.v.size)
+                updatedParameters.append((key, nextParam))
+                continue
             }
 
             guard let basis = state.basis else {
-                let fallbackUpdate = matrix * (learningRate * scaleFactor)
-                let nextParam = (parameter32 - fallbackUpdate.reshaped(parameter.shape)).asType(parameter.dtype)
+                // No projection basis available yet; use full Adam-style update.
+                if state.m.shape != matrix.shape || state.v.shape != matrix.shape {
+                    state.m = MLXArray.zeros([rows, cols], dtype: .float32)
+                    state.v = MLXArray.zeros([rows, cols], dtype: .float32)
+                }
+                state.m = b1 * state.m + (1 - b1) * matrix
+                state.v = b2 * state.v + (1 - b2) * square(matrix)
+
+                let fullUpdate = state.m / (sqrt(state.v) + eps)
+                let nextMatrix = parameter32.reshaped(rows, cols) - (learningRate * scaleFactor) * fullUpdate
+                let nextParam = nextMatrix.reshaped(parameter.shape).asType(parameter.dtype)
                 states[key] = state
+                projectedOptimizerElements += max(1, state.m.size + state.v.size)
                 updatedParameters.append((key, nextParam))
                 continue
             }
@@ -709,7 +814,8 @@ private final class GaLoreProjectedAdam: Optimizer {
         stats = GaLoreRuntimeStats(
             approximateProjectedOptimizerMemoryBytes: projectedBytes,
             approximateFullOptimizerMemoryBytes: fullBytes,
-            projectionRefreshed: projectionRefreshed
+            projectionRefreshed: projectionRefreshed,
+            svdFallbackCount: svdFallbackCount
         )
         lock.unlock()
 

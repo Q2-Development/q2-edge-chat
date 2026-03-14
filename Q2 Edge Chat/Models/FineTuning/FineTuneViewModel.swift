@@ -5,11 +5,11 @@ import SwiftUI
 final class FineTuneViewModel: ObservableObject {
     @Published var modelIdentifier = "mlx-community/Qwen2.5-0.5B-Instruct-4bit"
     @Published var datasetPath = ""
-    @Published var selectedMethod: TrainingMethod = .lora
-    @Published var loraRank: Int = 8
+    @Published var selectedMethod: TrainingMethod = .qlora
+    @Published var loraRank: Int = 4
     @Published var learningRate: Double = 0.0002
     @Published var steps: Int = 120
-    @Published var sequenceLength: Int = 256
+    @Published var sequenceLength: Int = 128
     @Published var microBatchSize: Int = 1
     @Published var projectionUpdateInterval: Int = 200
     @Published var scaleFactor: Double = 0.25
