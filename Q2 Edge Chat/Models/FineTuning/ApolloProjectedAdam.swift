@@ -8,15 +8,16 @@ import MLXNN
 #if canImport(MLXOptimizers)
 import MLXOptimizers
 #endif
-#if canImport(MLXRandom)
-import MLXRandom
-#endif
 
-#if canImport(MLX) && canImport(MLXNN) && canImport(MLXOptimizers) && canImport(MLXRandom)
+#if canImport(MLX) && canImport(MLXNN) && canImport(MLXOptimizers)
 struct ApolloRuntimeStats: Sendable {
     let approximateProjectedOptimizerMemoryBytes: UInt64
     let approximateFullOptimizerMemoryBytes: UInt64
     let projectionRefreshed: Bool
+}
+
+extension ApolloRuntimeStats: ProjectedOptimizerRuntimeStats {
+    var fallbackCount: Int { 0 }
 }
 
 final class ApolloProjectedAdam: Optimizer {
@@ -184,7 +185,13 @@ final class ApolloProjectedAdam: Optimizer {
             state.step += 1
             let needsRefresh = state.basis == nil || state.step == 1 || (state.step - 1) % projectionRefreshInterval == 0
             if needsRefresh {
-                state.basis = randomProjectionBasis(rows: rows, cols: cols, rank: projectedRank, mode: mode)
+                state.basis = randomProjectionBasis(
+                    rows: rows,
+                    cols: cols,
+                    rank: projectedRank,
+                    mode: mode,
+                    seed: key.hashValue ^ state.step
+                )
                 projectionRefreshed = true
             }
 
@@ -242,7 +249,7 @@ final class ApolloProjectedAdam: Optimizer {
         }
     }
 
-    private func randomProjectionBasis(rows: Int, cols: Int, rank: Int, mode: ProjectionMode) -> MLXArray {
+    private func randomProjectionBasis(rows: Int, cols: Int, rank: Int, mode: ProjectionMode, seed: Int) -> MLXArray {
         let projectionShape: [Int]
         let scale: Float
 
@@ -258,7 +265,18 @@ final class ApolloProjectedAdam: Optimizer {
             scale = 1
         }
 
-        return (MLXRandom.normal(projectionShape, dtype: .float32) * scale).asType(.float32)
+        let elementCount = projectionShape.reduce(1, *)
+        var values = [Float]()
+        values.reserveCapacity(elementCount)
+
+        for index in 0 ..< elementCount {
+            let mixed = Double((seed &* 31) &+ index &* 17 &+ 97)
+            let sample = sin(mixed * 12.9898 + 78.233) * 43758.5453
+            let fractional = sample - floor(sample)
+            values.append(Float((fractional * 2.0) - 1.0) * scale)
+        }
+
+        return MLXArray(values).reshaped(projectionShape[0], projectionShape[1]).asType(.float32)
     }
 }
 #endif

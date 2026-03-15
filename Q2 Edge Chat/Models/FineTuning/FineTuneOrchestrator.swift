@@ -36,27 +36,40 @@ actor FineTuneOrchestrator {
         #if canImport(MLXLLM) && canImport(MLXLMCommon) && canImport(MLXOptimizers)
         let validatedConfig = try config.validated()
         if let modelBillions = validatedConfig.estimatedModelBillions(),
-           modelBillions > FineTuneMemoryPolicy.maxSupportedModelBillions {
-            let limit = String(format: "%.1fB", FineTuneMemoryPolicy.maxSupportedModelBillions)
+           modelBillions > validatedConfig.method.modelSizeLimitBillions {
+            let limit = String(format: "%.1fB", validatedConfig.method.modelSizeLimitBillions)
             throw FineTuneOrchestratorError.trainingUnavailable("Model appears to be \(modelBillions)B. Under the 2.2GB iPhone safety profile, use a model at or below \(limit).")
         }
 
         let safety = validatedConfig.applyingMemorySafetyPolicy()
         let effectiveConfig = safety.config
+        let deviceTelemetry = FineTuneDeviceTelemetryProvider.current()
         let runID = effectiveConfig.id
         activeRunID = runID
         control.reset()
         defer { releaseTrainingResources() }
 
+        let trainState = FineTuneTrainState(config: effectiveConfig)
+        let startedAt = Date()
         var record = FineTuneRunRecord(
             id: runID,
             config: effectiveConfig,
             status: .queued,
-            startedAt: Date(),
+            startedAt: startedAt,
             finishedAt: nil,
             lastProgress: nil,
             artifact: nil,
-            errorMessage: nil
+            errorMessage: nil,
+            telemetry: Self.makeTelemetry(
+                config: effectiveConfig,
+                device: deviceTelemetry,
+                status: .queued,
+                startedAt: startedAt,
+                finishedAt: nil,
+                state: nil,
+                corpus: nil,
+                errorMessage: nil
+            )
         )
         try await runStore.upsert(record)
 
@@ -101,119 +114,79 @@ actor FineTuneOrchestrator {
                     timestamp: Date()
                 )
             )
+        } else if effectiveConfig.method == .apollo {
+            let snapshot = guardrails.snapshot()
+            progress(
+                FineTuneProgress(
+                    runID: runID,
+                    step: 0,
+                    totalSteps: effectiveConfig.steps,
+                    loss: 0,
+                    tokensPerSecond: 0,
+                    estimatedPeakMemoryBytes: snapshot.residentMemoryBytes,
+                    optimizerMemoryBytes: 0,
+                    baselineOptimizerMemoryBytes: 0,
+                    thermalState: snapshot.thermalState,
+                    status: .queued,
+                    message: "Experimental APOLLO mode trains full-model weights directly. Use only tiny MLX models and expect higher thermal load than QLoRA or DoRA.",
+                    method: effectiveConfig.method,
+                    timestamp: Date()
+                )
+            )
         }
 
+        var corpusForTelemetry: PreparedTrainingCorpus?
         do {
             let corpus = try datasetIngest.loadTrainingCorpus(from: effectiveConfig.datasetURL, config: effectiveConfig)
+            corpusForTelemetry = corpus
             let trainData = corpus.train
             let validateData = corpus.validate
 
             let (_, container) = try await modelLoader.loadModel(identifier: effectiveConfig.baseModelIdentifier)
 
             record.status = .running
+            record.telemetry = Self.makeTelemetry(
+                config: effectiveConfig,
+                device: deviceTelemetry,
+                status: .running,
+                startedAt: record.startedAt,
+                finishedAt: nil,
+                state: trainState,
+                corpus: corpusForTelemetry,
+                errorMessage: nil
+            )
             try await runStore.upsert(record)
 
             let adapterDirectory = try await runStore.adapterDirectory(for: runID)
-            let weightsURL = adapterDirectory.appendingPathComponent("adapters.safetensors")
-
-            let trainState = FineTuneTrainState(config: effectiveConfig)
+            let weightsFileName = effectiveConfig.method == .apollo ? "apollo_weights.safetensors" : "adapters.safetensors"
+            let weightsURL = adapterDirectory.appendingPathComponent(weightsFileName)
 
             try await container.perform { [weak self] context in
                 guard let self else { return }
-
-                let languageModel = context.model
-
-                guard let loRAModel = context.model as? LoRAModel else {
-                    throw FineTuneOrchestratorError.trainingUnavailable("Loaded model does not expose LoRA layers.")
-                }
-
-                let configuredLayers = min(max(1, effectiveConfig.loraRank * 2), loRAModel.loraLayers.count)
-                let fineTuneType: LoRAConfiguration.FineTuneType
-                switch effectiveConfig.method {
-                case .dora:
-                    fineTuneType = .dora
-                case .lora, .qlora, .galore:
-                    fineTuneType = .lora
-                }
-                let adapterConfig = LoRAConfiguration(
-                    numLayers: configuredLayers,
-                    fineTuneType: fineTuneType,
-                    loraParameters: .init(rank: effectiveConfig.loraRank, scale: Float(effectiveConfig.scaleFactor * 40.0), keys: nil)
-                )
-
-                _ = try LoRAContainer.from(model: languageModel, configuration: adapterConfig)
-
-                let optimizer: Optimizer
-                let gaLoreOptimizer: GaLoreProjectedAdam?
-                if effectiveConfig.method.usesProjectedOptimizerResearchPath {
-                    let projected = GaLoreProjectedAdam(
-                        learningRate: Float(effectiveConfig.learningRate),
-                        rank: effectiveConfig.loraRank,
-                        projectionUpdateInterval: effectiveConfig.projectionUpdateInterval,
-                        scaleFactor: Float(effectiveConfig.scaleFactor)
-                    )
-                    optimizer = projected
-                    gaLoreOptimizer = projected
-                } else {
-                    let adam = Adam(learningRate: Float(effectiveConfig.learningRate))
-                    optimizer = adam
-                    gaLoreOptimizer = nil
-                }
-
-                let params = LoRATrain.Parameters(
-                    batchSize: effectiveConfig.microBatchSize,
-                    iterations: effectiveConfig.steps,
-                    stepsPerReport: 1,
-                    stepsPerEval: max(10, effectiveConfig.steps / 8),
-                    validationBatches: min(2, max(1, validateData.count / max(1, effectiveConfig.microBatchSize))),
-                    saveEvery: max(25, effectiveConfig.steps),
-                    adapterURL: weightsURL
-                )
-
-                try LoRATrain.train(
-                    model: languageModel,
-                    train: trainData,
-                    validate: validateData,
-                    optimizer: optimizer,
-                    tokenizer: context.tokenizer,
-                    parameters: params
-                ) { loRAProgress in
-                    let snapshot = self.guardrails.snapshot()
-                    if self.control.isStopRequested {
-                        self.control.markStoppedByUser()
-                        return .stop
-                    }
-
-                    let decision = self.guardrails.evaluate(snapshot: snapshot)
-                    if case .stop(let reason) = decision {
-                        self.control.markGuardrailStop(reason)
-                        return .stop
-                    }
-
-                    let mapped = FineTuneOrchestrator.mapProgress(
-                        loRAProgress,
+                if effectiveConfig.method.usesAdapterTrainingPath {
+                    try await self.runAdapterTraining(
+                        context: context,
                         runID: runID,
                         config: effectiveConfig,
-                        snapshot: snapshot,
-                        state: trainState,
-                        gaLoreStats: gaLoreOptimizer?.runtimeStats(),
-                        messageOverride: {
-                            if case .pause(let reason) = decision { return reason }
-                            return nil
-                        }()
+                        trainData: trainData,
+                        validateData: validateData,
+                        weightsURL: weightsURL,
+                        adapterDirectory: adapterDirectory,
+                        trainState: trainState,
+                        progress: progress
                     )
-
-                    trainState.record(progress: mapped)
-                    progress(mapped)
-                    return .more
+                } else {
+                    try await self.runApolloTraining(
+                        context: context,
+                        runID: runID,
+                        config: effectiveConfig,
+                        trainData: trainData,
+                        validateData: validateData,
+                        weightsURL: weightsURL,
+                        trainState: trainState,
+                        progress: progress
+                    )
                 }
-
-                if !FileManager.default.fileExists(atPath: weightsURL.path) {
-                    try LoRATrain.saveLoRAWeights(model: languageModel, url: weightsURL)
-                }
-
-                let configData = try JSONEncoder().encode(adapterConfig)
-                try configData.write(to: adapterDirectory.appendingPathComponent("adapter_config.json"), options: .atomic)
             }
 
             if let guardrailReason = control.guardrailReason {
@@ -223,12 +196,27 @@ actor FineTuneOrchestrator {
                 throw FineTuneOrchestratorError.cancelled
             }
 
-            let artifact = try await finalizeArtifact(runID: runID, config: effectiveConfig)
+            let artifact = try await finalizeArtifact(
+                runID: runID,
+                config: effectiveConfig,
+                artifactURL: weightsURL,
+                kind: effectiveConfig.method.artifactKind
+            )
             record.status = .completed
             record.finishedAt = Date()
             record.lastProgress = trainState.latestProgress()
             record.artifact = artifact
             record.config = effectiveConfig
+            record.telemetry = Self.makeTelemetry(
+                config: effectiveConfig,
+                device: deviceTelemetry,
+                status: .completed,
+                startedAt: record.startedAt,
+                finishedAt: record.finishedAt,
+                state: trainState,
+                corpus: corpusForTelemetry,
+                errorMessage: nil
+            )
             try await runStore.upsert(record)
             return artifact
 
@@ -236,6 +224,17 @@ actor FineTuneOrchestrator {
             record.status = (error as? FineTuneOrchestratorError) == .cancelled ? .cancelled : .failed
             record.finishedAt = Date()
             record.errorMessage = error.localizedDescription
+            record.lastProgress = trainState.latestProgress()
+            record.telemetry = Self.makeTelemetry(
+                config: effectiveConfig,
+                device: deviceTelemetry,
+                status: record.status,
+                startedAt: record.startedAt,
+                finishedAt: record.finishedAt,
+                state: trainState,
+                corpus: corpusForTelemetry,
+                errorMessage: error.localizedDescription
+            )
             try? await runStore.upsert(record)
             throw error
         }
@@ -260,15 +259,193 @@ actor FineTuneOrchestrator {
         #endif
     }
 
-    private func finalizeArtifact(runID: UUID, config: FineTuneJobConfig) async throws -> FineTuneArtifact {
+    private func runAdapterTraining(
+        context: ModelContext,
+        runID: UUID,
+        config: FineTuneJobConfig,
+        trainData: [String],
+        validateData: [String],
+        weightsURL: URL,
+        adapterDirectory: URL,
+        trainState: FineTuneTrainState,
+        progress: @escaping @Sendable (FineTuneProgress) -> Void
+    ) async throws {
+        let languageModel = context.model
+
+        guard let loRAModel = context.model as? LoRAModel else {
+            throw FineTuneOrchestratorError.trainingUnavailable("Loaded model does not expose LoRA layers.")
+        }
+
+        let configuredLayers = min(max(1, config.loraRank * 2), loRAModel.loraLayers.count)
+        let fineTuneType: LoRAConfiguration.FineTuneType
+        switch config.method {
+        case .dora:
+            fineTuneType = .dora
+        case .lora, .qlora, .apollo, .galore:
+            fineTuneType = .lora
+        }
+        let adapterConfig = LoRAConfiguration(
+            numLayers: configuredLayers,
+            fineTuneType: fineTuneType,
+            loraParameters: .init(rank: config.loraRank, scale: Float(config.scaleFactor * 40.0), keys: nil)
+        )
+
+        _ = try LoRAContainer.from(model: languageModel, configuration: adapterConfig)
+
+        let optimizer: Optimizer
+        let gaLoreOptimizer: GaLoreProjectedAdam?
+        if config.method == .galore {
+            let projected = GaLoreProjectedAdam(
+                learningRate: Float(config.learningRate),
+                rank: config.loraRank,
+                projectionUpdateInterval: config.projectionUpdateInterval,
+                scaleFactor: Float(config.scaleFactor)
+            )
+            optimizer = projected
+            gaLoreOptimizer = projected
+        } else {
+            optimizer = Adam(learningRate: Float(config.learningRate))
+            gaLoreOptimizer = nil
+        }
+
+        let params = LoRATrain.Parameters(
+            batchSize: config.microBatchSize,
+            iterations: config.steps,
+            stepsPerReport: 1,
+            stepsPerEval: max(10, config.steps / 8),
+            validationBatches: min(2, max(1, validateData.count / max(1, config.microBatchSize))),
+            saveEvery: max(25, config.steps),
+            adapterURL: weightsURL
+        )
+
+        try LoRATrain.train(
+            model: languageModel,
+            train: trainData,
+            validate: validateData,
+            optimizer: optimizer,
+            tokenizer: context.tokenizer,
+            parameters: params
+        ) { loRAProgress in
+            let snapshot = self.guardrails.snapshot()
+            if self.control.isStopRequested {
+                self.control.markStoppedByUser()
+                return .stop
+            }
+
+            let decision = self.guardrails.evaluate(snapshot: snapshot)
+            if case .stop(let reason) = decision {
+                self.control.markGuardrailStop(reason)
+                return .stop
+            }
+
+            let mapped = FineTuneOrchestrator.mapProgress(
+                loRAProgress,
+                runID: runID,
+                config: config,
+                snapshot: snapshot,
+                state: trainState,
+                runtimeStats: gaLoreOptimizer?.runtimeStats(),
+                messageOverride: {
+                    if case .pause(let reason) = decision { return reason }
+                    return nil
+                }()
+            )
+
+            trainState.record(progress: mapped)
+            progress(mapped)
+            return .more
+        }
+
+        if !FileManager.default.fileExists(atPath: weightsURL.path) {
+            try LoRATrain.saveLoRAWeights(model: languageModel, url: weightsURL)
+        }
+
+        let configData = try JSONEncoder().encode(adapterConfig)
+        try configData.write(to: adapterDirectory.appendingPathComponent("adapter_config.json"), options: .atomic)
+    }
+
+    private func runApolloTraining(
+        context: ModelContext,
+        runID: UUID,
+        config: FineTuneJobConfig,
+        trainData: [String],
+        validateData: [String],
+        weightsURL: URL,
+        trainState: FineTuneTrainState,
+        progress: @escaping @Sendable (FineTuneProgress) -> Void
+    ) async throws {
+        let optimizer = ApolloProjectedAdam(
+            learningRate: Float(config.learningRate),
+            rank: config.loraRank,
+            projectionRefreshInterval: config.projectionUpdateInterval
+        )
+        let params = ApolloFullModelTrain.Parameters(
+            batchSize: config.microBatchSize,
+            iterations: config.steps,
+            stepsPerReport: 1,
+            stepsPerEval: max(10, config.steps / 8),
+            validationBatches: min(2, max(1, validateData.count / max(1, config.microBatchSize))),
+            saveEvery: max(25, config.steps),
+            weightsURL: weightsURL
+        )
+
+        try ApolloFullModelTrain.train(
+            model: context.model,
+            train: trainData,
+            validate: validateData,
+            optimizer: optimizer,
+            encode: { context.tokenizer.encode(text: $0) },
+            parameters: params
+        ) { apolloProgress in
+            let snapshot = self.guardrails.snapshot()
+            if self.control.isStopRequested {
+                self.control.markStoppedByUser()
+                return .stop
+            }
+
+            let decision = self.guardrails.evaluate(snapshot: snapshot)
+            if case .stop(let reason) = decision {
+                self.control.markGuardrailStop(reason)
+                return .stop
+            }
+
+            let mapped = FineTuneOrchestrator.mapProgress(
+                apolloProgress,
+                runID: runID,
+                config: config,
+                snapshot: snapshot,
+                state: trainState,
+                runtimeStats: optimizer.runtimeStats(),
+                messageOverride: {
+                    if case .pause(let reason) = decision { return reason }
+                    return nil
+                }()
+            )
+
+            trainState.record(progress: mapped)
+            progress(mapped)
+            return .more
+        }
+
+        if !FileManager.default.fileExists(atPath: weightsURL.path) {
+            try ApolloFullModelTrain.saveModelWeights(model: context.model, url: weightsURL)
+        }
+    }
+
+    private func finalizeArtifact(
+        runID: UUID,
+        config: FineTuneJobConfig,
+        artifactURL: URL,
+        kind: FineTuneArtifactKind
+    ) async throws -> FineTuneArtifact {
         let dir = try await runStore.adapterDirectory(for: runID)
-        let adapterURL = dir.appendingPathComponent("adapters.safetensors")
         let metadataURL = dir.appendingPathComponent("metadata.json")
 
         let metadata: [String: Any] = [
             "run_id": runID.uuidString,
             "base_model": config.baseModelIdentifier,
             "method": config.method.rawValue,
+            "artifact_kind": kind.rawValue,
             "rank": config.loraRank,
             "projection_update_interval": config.projectionUpdateInterval,
             "scale_factor": config.scaleFactor,
@@ -282,9 +459,10 @@ actor FineTuneOrchestrator {
             runID: runID,
             config: config,
             baseModelIdentifier: config.baseModelIdentifier,
-            adapterURL: adapterURL,
+            adapterURL: artifactURL,
             metadataURL: metadataURL,
-            createdAt: Date()
+            createdAt: Date(),
+            kind: kind
         )
     }
 
@@ -294,86 +472,245 @@ actor FineTuneOrchestrator {
         config: FineTuneJobConfig,
         snapshot: GuardrailSnapshot,
         state: FineTuneTrainState,
-        gaLoreStats: GaLoreRuntimeStats?,
+        runtimeStats: (any ProjectedOptimizerRuntimeStats)?,
+        messageOverride: String?
+    ) -> FineTuneProgress {
+        switch progress {
+        case .train(let iteration, let trainingLoss, _, let tokensPerSecond):
+            return mapTrainingProgress(
+                runID: runID,
+                config: config,
+                snapshot: snapshot,
+                state: state,
+                runtimeStats: runtimeStats,
+                iteration: iteration,
+                trainingLoss: trainingLoss,
+                tokensPerSecond: tokensPerSecond,
+                messageOverride: messageOverride
+            )
+        case .validation(let iteration, let validationLoss, _):
+            return mapValidationProgress(
+                runID: runID,
+                config: config,
+                snapshot: snapshot,
+                state: state,
+                iteration: iteration,
+                validationLoss: validationLoss,
+                messageOverride: messageOverride
+            )
+        case .save(let iteration, let url):
+            return mapSaveProgress(
+                runID: runID,
+                config: config,
+                snapshot: snapshot,
+                state: state,
+                iteration: iteration,
+                url: url,
+                messageOverride: messageOverride
+            )
+        }
+    }
+
+    nonisolated private static func mapProgress(
+        _ progress: ApolloFullModelTrain.Progress,
+        runID: UUID,
+        config: FineTuneJobConfig,
+        snapshot: GuardrailSnapshot,
+        state: FineTuneTrainState,
+        runtimeStats: (any ProjectedOptimizerRuntimeStats)?,
+        messageOverride: String?
+    ) -> FineTuneProgress {
+        switch progress {
+        case .train(let iteration, let trainingLoss, _, let tokensPerSecond):
+            return mapTrainingProgress(
+                runID: runID,
+                config: config,
+                snapshot: snapshot,
+                state: state,
+                runtimeStats: runtimeStats,
+                iteration: iteration,
+                trainingLoss: trainingLoss,
+                tokensPerSecond: tokensPerSecond,
+                messageOverride: messageOverride
+            )
+        case .validation(let iteration, let validationLoss, _):
+            return mapValidationProgress(
+                runID: runID,
+                config: config,
+                snapshot: snapshot,
+                state: state,
+                iteration: iteration,
+                validationLoss: validationLoss,
+                messageOverride: messageOverride
+            )
+        case .save(let iteration, let url):
+            return mapSaveProgress(
+                runID: runID,
+                config: config,
+                snapshot: snapshot,
+                state: state,
+                iteration: iteration,
+                url: url,
+                messageOverride: messageOverride
+            )
+        }
+    }
+
+    nonisolated private static func mapTrainingProgress(
+        runID: UUID,
+        config: FineTuneJobConfig,
+        snapshot: GuardrailSnapshot,
+        state: FineTuneTrainState,
+        runtimeStats: (any ProjectedOptimizerRuntimeStats)?,
+        iteration: Int,
+        trainingLoss: Float,
+        tokensPerSecond: Double,
         messageOverride: String?
     ) -> FineTuneProgress {
         let now = Date()
+        let step = iteration + 1
         let fallbackBaseline = UInt64(max(1, config.sequenceLength * config.loraRank * MemoryLayout<Double>.size * 2))
+        let defaultBaseline = max(fallbackBaseline, UInt64(config.sequenceLength * 16 * MemoryLayout<Double>.size * 2))
+        let baseline = runtimeStats?.approximateFullOptimizerMemoryBytes ?? defaultBaseline
+        let optimizerMemory = runtimeStats?.approximateProjectedOptimizerMemoryBytes
+            ?? defaultProjectedOptimizerMemory(config: config, defaultBaseline: defaultBaseline)
 
-        switch progress {
-        case .train(let iteration, let trainingLoss, _, let tokensPerSecond):
-            let step = iteration + 1
-            let defaultBaseline = max(fallbackBaseline, UInt64(config.sequenceLength * 16 * MemoryLayout<Double>.size * 2))
-            let baseline = gaLoreStats?.approximateFullOptimizerMemoryBytes ?? defaultBaseline
-            let optimizerMemory = gaLoreStats?.approximateProjectedOptimizerMemoryBytes
-                ?? (config.method.usesProjectedOptimizerResearchPath ? UInt64(Double(defaultBaseline) * max(0.1, min(config.scaleFactor, 1.0))) : defaultBaseline)
-            let stepMessage: String
-            if let gaLoreStats, config.method.usesProjectedOptimizerResearchPath, gaLoreStats.svdFallbackCount > 0 {
-                stepMessage = messageOverride ?? "Training step \(step) (projection fallback on \(gaLoreStats.svdFallbackCount) tensor(s))"
-            } else if let gaLoreStats, config.method.usesProjectedOptimizerResearchPath, gaLoreStats.projectionRefreshed {
-                stepMessage = messageOverride ?? "Training step \(step) (projection refresh)"
-            } else {
-                stepMessage = messageOverride ?? "Training step \(step)"
-            }
-
-            state.update(
-                step: step,
-                loss: Double(trainingLoss),
-                tokensPerSecond: tokensPerSecond,
-                optimizerMemoryBytes: optimizerMemory,
-                baselineOptimizerMemoryBytes: baseline
-            )
-
-            return FineTuneProgress(
-                runID: runID,
-                step: step,
-                totalSteps: config.steps,
-                loss: Double(trainingLoss),
-                tokensPerSecond: tokensPerSecond,
-                estimatedPeakMemoryBytes: max(snapshot.residentMemoryBytes, optimizerMemory),
-                optimizerMemoryBytes: optimizerMemory,
-                baselineOptimizerMemoryBytes: baseline,
-                thermalState: snapshot.thermalState,
-                status: .running,
-                message: stepMessage,
-                method: config.method,
-                timestamp: now
-            )
-        case .validation(let iteration, let validationLoss, _):
-            let step = min(config.steps, iteration + 1)
-            return FineTuneProgress(
-                runID: runID,
-                step: step,
-                totalSteps: config.steps,
-                loss: Double(validationLoss),
-                tokensPerSecond: max(0, state.lastTokensPerSecond),
-                estimatedPeakMemoryBytes: snapshot.residentMemoryBytes,
-                optimizerMemoryBytes: state.lastOptimizerMemoryBytes,
-                baselineOptimizerMemoryBytes: state.lastBaselineOptimizerMemoryBytes,
-                thermalState: snapshot.thermalState,
-                status: .running,
-                message: messageOverride ?? "Validation checkpoint at step \(step)",
-                method: config.method,
-                timestamp: now
-            )
-        case .save(let iteration, let url):
-            let step = min(config.steps, iteration + 1)
-            return FineTuneProgress(
-                runID: runID,
-                step: step,
-                totalSteps: config.steps,
-                loss: state.lastLoss,
-                tokensPerSecond: max(0, state.lastTokensPerSecond),
-                estimatedPeakMemoryBytes: snapshot.residentMemoryBytes,
-                optimizerMemoryBytes: state.lastOptimizerMemoryBytes,
-                baselineOptimizerMemoryBytes: state.lastBaselineOptimizerMemoryBytes,
-                thermalState: snapshot.thermalState,
-                status: .running,
-                message: messageOverride ?? "Saved adapter checkpoint to \(url.lastPathComponent)",
-                method: config.method,
-                timestamp: now
-            )
+        let stepMessage: String
+        if let runtimeStats, config.method.usesProjectedOptimizerTelemetry, runtimeStats.fallbackCount > 0 {
+            stepMessage = messageOverride ?? "Training step \(step) (projection fallback on \(runtimeStats.fallbackCount) tensor(s))"
+        } else if let runtimeStats, config.method.usesProjectedOptimizerTelemetry, runtimeStats.projectionRefreshed {
+            stepMessage = messageOverride ?? "Training step \(step) (projection refresh)"
+        } else {
+            stepMessage = messageOverride ?? "Training step \(step)"
         }
+
+        state.update(
+            step: step,
+            loss: Double(trainingLoss),
+            tokensPerSecond: tokensPerSecond,
+            optimizerMemoryBytes: optimizerMemory,
+            baselineOptimizerMemoryBytes: baseline
+        )
+
+        return FineTuneProgress(
+            runID: runID,
+            step: step,
+            totalSteps: config.steps,
+            loss: Double(trainingLoss),
+            tokensPerSecond: tokensPerSecond,
+            estimatedPeakMemoryBytes: max(snapshot.residentMemoryBytes, optimizerMemory),
+            optimizerMemoryBytes: optimizerMemory,
+            baselineOptimizerMemoryBytes: baseline,
+            thermalState: snapshot.thermalState,
+            status: .running,
+            message: stepMessage,
+            method: config.method,
+            timestamp: now
+        )
+    }
+
+    nonisolated private static func mapValidationProgress(
+        runID: UUID,
+        config: FineTuneJobConfig,
+        snapshot: GuardrailSnapshot,
+        state: FineTuneTrainState,
+        iteration: Int,
+        validationLoss: Float,
+        messageOverride: String?
+    ) -> FineTuneProgress {
+        let now = Date()
+        let step = min(config.steps, iteration + 1)
+        return FineTuneProgress(
+            runID: runID,
+            step: step,
+            totalSteps: config.steps,
+            loss: Double(validationLoss),
+            tokensPerSecond: max(0, state.lastTokensPerSecond),
+            estimatedPeakMemoryBytes: snapshot.residentMemoryBytes,
+            optimizerMemoryBytes: state.lastOptimizerMemoryBytes,
+            baselineOptimizerMemoryBytes: state.lastBaselineOptimizerMemoryBytes,
+            thermalState: snapshot.thermalState,
+            status: .running,
+            message: messageOverride ?? "Validation checkpoint at step \(step)",
+            method: config.method,
+            timestamp: now
+        )
+    }
+
+    nonisolated private static func mapSaveProgress(
+        runID: UUID,
+        config: FineTuneJobConfig,
+        snapshot: GuardrailSnapshot,
+        state: FineTuneTrainState,
+        iteration: Int,
+        url: URL,
+        messageOverride: String?
+    ) -> FineTuneProgress {
+        let now = Date()
+        let step = min(config.steps, iteration + 1)
+        let noun = config.method.artifactKind == .adapter ? "adapter checkpoint" : "weights checkpoint"
+        return FineTuneProgress(
+            runID: runID,
+            step: step,
+            totalSteps: config.steps,
+            loss: state.lastLoss,
+            tokensPerSecond: max(0, state.lastTokensPerSecond),
+            estimatedPeakMemoryBytes: snapshot.residentMemoryBytes,
+            optimizerMemoryBytes: state.lastOptimizerMemoryBytes,
+            baselineOptimizerMemoryBytes: state.lastBaselineOptimizerMemoryBytes,
+            thermalState: snapshot.thermalState,
+            status: .running,
+            message: messageOverride ?? "Saved \(noun) to \(url.lastPathComponent)",
+            method: config.method,
+            timestamp: now
+        )
+    }
+
+    nonisolated static func defaultProjectedOptimizerMemory(config: FineTuneJobConfig, defaultBaseline: UInt64) -> UInt64 {
+        switch config.method {
+        case .galore:
+            return UInt64(Double(defaultBaseline) * max(0.1, min(config.scaleFactor, 1.0)))
+        case .apollo:
+            let factor = max(0.15, min(Double(config.loraRank) / 16.0, 0.5))
+            return UInt64(Double(defaultBaseline) * factor)
+        case .lora, .qlora, .dora:
+            return defaultBaseline
+        }
+    }
+
+    nonisolated private static func makeTelemetry(
+        config: FineTuneJobConfig,
+        device: FineTuneDeviceTelemetry,
+        status: FineTuneRunStatus,
+        startedAt: Date,
+        finishedAt: Date?,
+        state: FineTuneTrainState?,
+        corpus: PreparedTrainingCorpus?,
+        errorMessage: String?
+    ) -> FineTuneRunTelemetry {
+        let metrics = state?.metricsSnapshot()
+        return FineTuneRunTelemetry(
+            runID: config.id,
+            baseModelIdentifier: config.baseModelIdentifier,
+            trainingMethod: config.method,
+            finalStatus: status,
+            device: device,
+            totalSamples: corpus?.totalSamples,
+            trainingSampleCount: corpus?.train.count,
+            validationSampleCount: corpus?.validate.count,
+            totalSteps: config.steps,
+            completedSteps: metrics?.completedSteps ?? 0,
+            latestLoss: metrics?.latestLoss,
+            bestLoss: metrics?.bestLoss,
+            maxTokensPerSecond: metrics?.maxTokensPerSecond ?? 0,
+            peakEstimatedMemoryBytes: metrics?.peakEstimatedMemoryBytes ?? 0,
+            peakOptimizerMemoryBytes: metrics?.peakOptimizerMemoryBytes ?? 0,
+            baselineOptimizerMemoryBytes: metrics?.baselineOptimizerMemoryBytes ?? 0,
+            latestThermalState: metrics?.latestThermalState,
+            errorMessage: errorMessage,
+            startedAt: startedAt,
+            finishedAt: finishedAt
+        )
     }
 }
 
@@ -439,13 +776,18 @@ private final class FineTuneTrainState: @unchecked Sendable {
     private var lastOptimizerMemoryBytesValue: UInt64
     private var lastBaselineOptimizerMemoryBytesValue: UInt64
     private var lastProgressValue: FineTuneProgress?
+    private var lastStepValue = 0
+    private var bestLossValue: Double?
+    private var maxTokensPerSecondValue: Double = 0
+    private var peakEstimatedMemoryBytesValue: UInt64 = 0
+    private var peakOptimizerMemoryBytesValue: UInt64
+    private var latestThermalStateValue: FineTuneThermalState?
 
     init(config: FineTuneJobConfig) {
         let baseline = UInt64(max(1, config.sequenceLength * 16 * MemoryLayout<Double>.size * 2))
         self.lastBaselineOptimizerMemoryBytesValue = baseline
-        self.lastOptimizerMemoryBytesValue = config.method.usesProjectedOptimizerResearchPath
-            ? UInt64(Double(baseline) * max(0.1, min(config.scaleFactor, 1.0)))
-            : baseline
+        self.lastOptimizerMemoryBytesValue = FineTuneOrchestrator.defaultProjectedOptimizerMemory(config: config, defaultBaseline: baseline)
+        self.peakOptimizerMemoryBytesValue = self.lastOptimizerMemoryBytesValue
     }
 
     func update(
@@ -466,7 +808,35 @@ private final class FineTuneTrainState: @unchecked Sendable {
     func record(progress: FineTuneProgress) {
         lock.lock()
         lastProgressValue = progress
+        lastStepValue = max(lastStepValue, progress.step)
+        peakEstimatedMemoryBytesValue = max(peakEstimatedMemoryBytesValue, progress.estimatedPeakMemoryBytes)
+        peakOptimizerMemoryBytesValue = max(peakOptimizerMemoryBytesValue, progress.optimizerMemoryBytes)
+        maxTokensPerSecondValue = max(maxTokensPerSecondValue, progress.tokensPerSecond)
+        latestThermalStateValue = progress.thermalState
+        if progress.step > 0 {
+            if let currentBest = bestLossValue {
+                bestLossValue = min(currentBest, progress.loss)
+            } else {
+                bestLossValue = progress.loss
+            }
+        }
         lock.unlock()
+    }
+
+    func metricsSnapshot() -> FineTuneMetricsSnapshot {
+        lock.lock()
+        let snapshot = FineTuneMetricsSnapshot(
+            completedSteps: lastStepValue,
+            latestLoss: lastStepValue > 0 ? lastLossValue : nil,
+            bestLoss: bestLossValue,
+            maxTokensPerSecond: maxTokensPerSecondValue,
+            peakEstimatedMemoryBytes: peakEstimatedMemoryBytesValue,
+            peakOptimizerMemoryBytes: peakOptimizerMemoryBytesValue,
+            baselineOptimizerMemoryBytes: lastBaselineOptimizerMemoryBytesValue,
+            latestThermalState: latestThermalStateValue
+        )
+        lock.unlock()
+        return snapshot
     }
 
     func latestProgress() -> FineTuneProgress? {
@@ -505,6 +875,17 @@ private final class FineTuneTrainState: @unchecked Sendable {
     }
 }
 
+private struct FineTuneMetricsSnapshot: Sendable {
+    let completedSteps: Int
+    let latestLoss: Double?
+    let bestLoss: Double?
+    let maxTokensPerSecond: Double
+    let peakEstimatedMemoryBytes: UInt64
+    let peakOptimizerMemoryBytes: UInt64
+    let baselineOptimizerMemoryBytes: UInt64
+    let latestThermalState: FineTuneThermalState?
+}
+
 enum FineTuneOrchestratorError: Error, LocalizedError, Equatable {
     case alreadyRunning
     case cancelled
@@ -526,11 +907,22 @@ enum FineTuneOrchestratorError: Error, LocalizedError, Equatable {
 }
 
 #if canImport(MLX) && canImport(MLXNN) && canImport(MLXOptimizers)
+protocol ProjectedOptimizerRuntimeStats {
+    var approximateProjectedOptimizerMemoryBytes: UInt64 { get }
+    var approximateFullOptimizerMemoryBytes: UInt64 { get }
+    var projectionRefreshed: Bool { get }
+    var fallbackCount: Int { get }
+}
+
 private struct GaLoreRuntimeStats: Sendable {
     let approximateProjectedOptimizerMemoryBytes: UInt64
     let approximateFullOptimizerMemoryBytes: UInt64
     let projectionRefreshed: Bool
     let svdFallbackCount: Int
+}
+
+extension GaLoreRuntimeStats: ProjectedOptimizerRuntimeStats {
+    var fallbackCount: Int { svdFallbackCount }
 }
 
 private final class GaLoreProjectedAdam: Optimizer {

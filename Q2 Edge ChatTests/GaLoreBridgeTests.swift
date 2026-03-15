@@ -23,4 +23,37 @@ final class GaLoreBridgeTests: XCTestCase {
 
         XCTAssertLessThan(result.approximateOptimizerMemoryBytes, result.approximateFullOptimizerMemoryBytes)
     }
+
+    func testProjectionModeUsesRightWhenRowsLessOrEqualCols() {
+        var bridge = GaLoreOptimizerBridge(rank: 4, vectorLength: 128, projectionUpdateInterval: 50, scaleFactor: 0.25, learningRate: 1e-3)
+        let result = bridge.stepMatrix(rows: 4, cols: 16, globalStep: 1)
+
+        XCTAssertEqual(result.projectionMode, .right)
+        XCTAssertFalse(result.usedFullFallback)
+    }
+
+    func testProjectionModeUsesLeftWhenRowsGreaterThanCols() {
+        var bridge = GaLoreOptimizerBridge(rank: 4, vectorLength: 128, projectionUpdateInterval: 50, scaleFactor: 0.25, learningRate: 1e-3)
+        let result = bridge.stepMatrix(rows: 32, cols: 8, globalStep: 1)
+
+        XCTAssertEqual(result.projectionMode, .left)
+        XCTAssertFalse(result.usedFullFallback)
+    }
+
+    func testVectorGradientUsesFullPathWithoutFallback() {
+        var bridge = GaLoreOptimizerBridge(rank: 4, vectorLength: 64, projectionUpdateInterval: 10, scaleFactor: 0.25, learningRate: 1e-3)
+        let result = bridge.step(gradient: Array(repeating: 0.1, count: 64), globalStep: 1)
+
+        XCTAssertEqual(result.projectionMode, .full)
+        XCTAssertFalse(result.usedFullFallback)
+    }
+
+    func testForcedProjectionFailureFallsBackToFullAndContinues() {
+        var bridge = GaLoreOptimizerBridge(rank: 4, vectorLength: 64, projectionUpdateInterval: 2, scaleFactor: 0.25, learningRate: 1e-3)
+        let result = bridge.stepMatrix(rows: 8, cols: 8, globalStep: 1, forceProjectionFailure: true)
+
+        XCTAssertTrue(result.usedFullFallback)
+        XCTAssertEqual(result.approximateOptimizerMemoryBytes, result.approximateFullOptimizerMemoryBytes)
+        XCTAssertGreaterThan(result.updateNorm, 0)
+    }
 }

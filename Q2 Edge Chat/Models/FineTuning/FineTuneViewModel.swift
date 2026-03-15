@@ -65,7 +65,7 @@ final class FineTuneViewModel: ObservableObject {
                 await MainActor.run {
                     self.lastArtifact = artifact
                     self.isRunning = false
-                    self.statusMessage = "Run completed. Adapter saved."
+                    self.statusMessage = "Run completed. \(artifact.kind.displayName) saved."
                 }
                 await reloadRuns()
             } catch {

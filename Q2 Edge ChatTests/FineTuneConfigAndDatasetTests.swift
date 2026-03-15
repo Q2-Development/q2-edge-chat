@@ -42,6 +42,45 @@ final class FineTuneConfigAndDatasetTests: XCTestCase {
         XCTAssertNoThrow(try cfg.validated())
     }
 
+    func testConfigValidationRejectsQuantizedRemoteModelForApollo() throws {
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("unit_dataset_apollo_quantized_guard.jsonl")
+        try "{\"prompt\":\"hi\",\"completion\":\"there\"}\n".write(to: tmp, atomically: true, encoding: .utf8)
+
+        let cfg = FineTuneJobConfig(
+            baseModelIdentifier: "mlx-community/Qwen2.5-0.5B-Instruct-4bit",
+            datasetURL: tmp,
+            method: .apollo
+        )
+
+        XCTAssertThrowsError(try cfg.validated())
+    }
+
+    func testConfigValidationRejectsQuantizedLocalModelForApollo() throws {
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("unit_dataset_apollo_quantized_local_guard.jsonl")
+        try "{\"prompt\":\"hi\",\"completion\":\"there\"}\n".write(to: tmp, atomically: true, encoding: .utf8)
+
+        let cfg = FineTuneJobConfig(
+            baseModelIdentifier: "/private/var/mobile/Containers/Data/Application/tiny-model-4bit",
+            datasetURL: tmp,
+            method: .apollo
+        )
+
+        XCTAssertThrowsError(try cfg.validated())
+    }
+
+    func testConfigValidationRejectsOversizedApolloModel() throws {
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("unit_dataset_apollo_model_size.jsonl")
+        try "{\"prompt\":\"hi\",\"completion\":\"there\"}\n".write(to: tmp, atomically: true, encoding: .utf8)
+
+        let cfg = FineTuneJobConfig(
+            baseModelIdentifier: "mlx-community/Qwen2.5-1.5B-Instruct",
+            datasetURL: tmp,
+            method: .apollo
+        )
+
+        XCTAssertThrowsError(try cfg.validated())
+    }
+
     func testDatasetIngestParsesJSONLPromptCompletion() throws {
         let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("dataset_jsonl.jsonl")
         let text = "{\"prompt\":\"A\",\"completion\":\"B\"}\n{\"instruction\":\"X\",\"output\":\"Y\"}\n"
@@ -121,6 +160,29 @@ final class FineTuneConfigAndDatasetTests: XCTestCase {
         XCTAssertEqual(adjusted.config.loraRank, 8)
         XCTAssertEqual(adjusted.config.sequenceLength, 128)
         XCTAssertFalse(adjusted.notes.isEmpty)
+    }
+
+    func testMemorySafetyPolicyClampsApolloSettings() throws {
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("dataset_apollo_policy.jsonl")
+        try "{\"prompt\":\"A\",\"completion\":\"B\"}\n".write(to: tmp, atomically: true, encoding: .utf8)
+
+        let config = FineTuneJobConfig(
+            baseModelIdentifier: "/private/var/mobile/local-tiny-model",
+            datasetURL: tmp,
+            method: .apollo,
+            loraRank: 12,
+            learningRate: 0.0002,
+            steps: 40,
+            sequenceLength: 256,
+            microBatchSize: 4,
+            projectionUpdateInterval: 50
+        )
+
+        let adjusted = config.applyingMemorySafetyPolicy()
+
+        XCTAssertEqual(adjusted.config.microBatchSize, 1)
+        XCTAssertEqual(adjusted.config.loraRank, 4)
+        XCTAssertEqual(adjusted.config.sequenceLength, 64)
     }
 
     func testEstimatedModelBillionsParsesIdentifier() throws {

@@ -15,7 +15,8 @@ enum GuardrailDecision: Equatable {
 }
 
 struct TrainingGuardrailService {
-    var maxResidentMemoryBytes: UInt64 = 2_600_000_000
+    var maxResidentMemoryBytes: UInt64 = FineTuneMemoryPolicy.maxResidentMemoryBytes
+    var pauseResidentMemoryBytes: UInt64 = FineTuneMemoryPolicy.pauseResidentMemoryBytes
     var stopAtThermalState: FineTuneThermalState = .critical
     var pauseAtThermalState: FineTuneThermalState = .serious
 
@@ -34,7 +35,12 @@ struct TrainingGuardrailService {
             return .pause("Training paused due to serious thermal pressure.")
         }
         if snapshot.residentMemoryBytes > maxResidentMemoryBytes {
-            return .stop("Training stopped because memory usage exceeded the safety limit.")
+            let limit = ByteCountFormatter.string(fromByteCount: Int64(maxResidentMemoryBytes), countStyle: .memory)
+            return .stop("Training stopped because app memory exceeded the \(limit) safety limit.")
+        }
+        if snapshot.residentMemoryBytes > pauseResidentMemoryBytes {
+            let limit = ByteCountFormatter.string(fromByteCount: Int64(maxResidentMemoryBytes), countStyle: .memory)
+            return .pause("Training paused because app memory is approaching the \(limit) safety limit.")
         }
         return .allow
     }

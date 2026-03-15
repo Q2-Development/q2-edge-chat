@@ -246,7 +246,9 @@ struct FineTuneView: View {
                 TextField("MLX model id or local path", text: $viewModel.modelIdentifier)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                Text("Use a quantized MLX model id for iPhone, for example `mlx-community/Qwen2.5-0.5B-Instruct-4bit`.")
+                Text(viewModel.selectedMethod == .apollo
+                    ? "For APOLLO, use a tiny local or unquantized MLX model. Quantized remote model ids are rejected for this experimental full-model path."
+                    : "Use a quantized MLX model id for iPhone, for example `mlx-community/Qwen2.5-0.5B-Instruct-4bit`.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -274,7 +276,7 @@ struct FineTuneView: View {
             }
 
             Section("Hyperparameters") {
-                Stepper("Adapter rank: \(viewModel.loraRank)", value: $viewModel.loraRank, in: 1...128)
+                Stepper("\(viewModel.selectedMethod.rankControlLabel): \(viewModel.loraRank)", value: $viewModel.loraRank, in: 1...128)
                 HStack {
                     Text("Learning rate")
                     Spacer()
@@ -286,21 +288,23 @@ struct FineTuneView: View {
                 Stepper("Steps: \(viewModel.steps)", value: $viewModel.steps, in: 10...3000, step: 10)
                 Stepper("Seq length: \(viewModel.sequenceLength)", value: $viewModel.sequenceLength, in: 64...2048, step: 64)
                 Stepper("Micro-batch: \(viewModel.microBatchSize)", value: $viewModel.microBatchSize, in: 1...8)
-                Text("iPhone safety profile is enforced at runtime (2.2 GB budget): micro-batch 1, quantized MLX base preferred, adapter rank <= 8, seq length <= 128.")
+                Text("iPhone safety profile is enforced at runtime (2.2 GB budget): micro-batch 1, QLoRA/DoRA prefer quantized MLX bases, APOLLO is capped to tiny models <= 0.5B, and method-specific rank/sequence limits are applied automatically.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
 
-            if viewModel.selectedMethod.usesProjectedOptimizerResearchPath {
-                Section("GaLore") {
+            if viewModel.selectedMethod.showsProjectionControls {
+                Section("Projection") {
                     Stepper("Projection update interval: \(viewModel.projectionUpdateInterval)", value: $viewModel.projectionUpdateInterval, in: 10...1000, step: 10)
-                    HStack {
-                        Text("Scale factor")
-                        Spacer()
-                        TextField("0.25", value: $viewModel.scaleFactor, format: .number.precision(.fractionLength(2)))
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 70)
+                    if viewModel.selectedMethod == .galore {
+                        HStack {
+                            Text("Scale factor")
+                            Spacer()
+                            TextField("0.25", value: $viewModel.scaleFactor, format: .number.precision(.fractionLength(2)))
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .frame(width: 70)
+                        }
                     }
                 }
             }
@@ -335,7 +339,7 @@ struct FineTuneView: View {
                     Text("Optimizer memory: \(ByteCountFormatter.string(fromByteCount: Int64(progress.optimizerMemoryBytes), countStyle: .memory))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    if progress.method.usesProjectedOptimizerResearchPath && progress.baselineOptimizerMemoryBytes > 0 {
+                    if progress.method.usesProjectedOptimizerTelemetry && progress.baselineOptimizerMemoryBytes > 0 {
                         let saved = max(0, Int64(progress.baselineOptimizerMemoryBytes) - Int64(progress.optimizerMemoryBytes))
                         let pct = (Double(saved) / Double(progress.baselineOptimizerMemoryBytes)) * 100
                         Text(String(format: "Projected optimizer memory reduction: %.1f%%", pct))
@@ -355,13 +359,13 @@ struct FineTuneView: View {
             }
 
             if let artifact = viewModel.lastArtifact {
-                Section("Last Artifact") {
+                Section("Last \(artifact.kind.displayName)") {
                     Text(artifact.adapterURL.path)
                         .font(.caption)
                         .lineLimit(2)
                     if #available(iOS 16.0, *) {
                         ShareLink(item: artifact.adapterURL) {
-                            Label("Export Adapter", systemImage: "square.and.arrow.up")
+                            Label(artifact.kind.exportLabel, systemImage: "square.and.arrow.up")
                         }
                     }
                 }
@@ -404,6 +408,12 @@ struct FineTuneRunsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
+                    if let telemetry = run.telemetry {
+                        Text("\(telemetry.device.deviceModel) • \(telemetry.device.systemName) \(telemetry.device.systemVersion) • peak \(ByteCountFormatter.string(fromByteCount: Int64(telemetry.peakEstimatedMemoryBytes), countStyle: .memory))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
                     if let progress = run.lastProgress {
                         Text(String(format: "Loss %.3f • %d/%d steps", progress.loss, progress.step, progress.totalSteps))
                             .font(.caption)
@@ -413,11 +423,11 @@ struct FineTuneRunsView: View {
                     if let artifact = run.artifact {
                         if #available(iOS 16.0, *) {
                             ShareLink(item: artifact.adapterURL) {
-                                Label("Export Adapter", systemImage: "square.and.arrow.up")
+                                Label(artifact.kind.exportLabel, systemImage: "square.and.arrow.up")
                                     .font(.caption)
                             }
                         } else {
-                            Text(artifact.adapterURL.lastPathComponent)
+                            Text("\(artifact.kind.displayName): \(artifact.adapterURL.lastPathComponent)")
                                 .font(.caption)
                         }
                     }
@@ -442,8 +452,15 @@ struct FineTuneRunsView: View {
 }
 
 struct AdapterEvaluationView: View {
+    private enum Field: Hashable {
+        case modelIdentifier
+        case prompt
+        case temperature
+    }
+
     @StateObject private var viewModel = AdapterEvaluationViewModel()
     @State private var showingAdapterPicker = false
+    @FocusState private var focusedField: Field?
 
     var body: some View {
         Form {
@@ -451,6 +468,7 @@ struct AdapterEvaluationView: View {
                 TextField("MLX model id or local path", text: $viewModel.modelIdentifier)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+                    .focused($focusedField, equals: .modelIdentifier)
             }
 
             Section("Adapter") {
@@ -466,6 +484,7 @@ struct AdapterEvaluationView: View {
             Section("Prompt") {
                 TextEditor(text: $viewModel.prompt)
                     .frame(minHeight: 90)
+                    .focused($focusedField, equals: .prompt)
             }
 
             Section("Generation") {
@@ -477,6 +496,7 @@ struct AdapterEvaluationView: View {
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                         .frame(width: 80)
+                        .focused($focusedField, equals: .temperature)
                 }
             }
 
@@ -522,6 +542,20 @@ struct AdapterEvaluationView: View {
             }
         }
         .navigationTitle("Adapter Eval")
+        .scrollDismissesKeyboard(.interactively)
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                dismissKeyboard()
+            }
+        )
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    dismissKeyboard()
+                }
+            }
+        }
         .fileImporter(
             isPresented: $showingAdapterPicker,
             allowedContentTypes: [UTType(filenameExtension: "safetensors") ?? .data],
@@ -531,5 +565,10 @@ struct AdapterEvaluationView: View {
                 viewModel.importAdapter(from: first)
             }
         }
+    }
+
+    private func dismissKeyboard() {
+        focusedField = nil
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
